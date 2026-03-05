@@ -1,0 +1,28 @@
+<view class="page">
+  <view class="card">
+    <view class="section-title">本月统计（{{month}}）</view>
+    <view class="row stat-line">
+      <view class="muted">总支出</view>
+      <view class="amount-expense">¥{{totalExpense}}</view>
+    </view>
+    <view class="row stat-line">
+      <view class="muted">总收入</view>
+      <view class="amount-income">¥{{totalIncome}}</view>
+    </view>
+    <view class="row stat-line">
+      <view class="muted">结余</view>
+      <view>¥{{balance}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">支出 Top 类目</view>
+    <view wx:if="{{!hasExpense}}" class="placeholder">本月暂无支出数据</view>
+    <block wx:for="{{topCategories}}" wx:key="category">
+      <view class="row top-item">
+        <view>{{item.category}}</view>
+        <view>¥{{item.amount}}（{{item.ratio}}）</view>
+      </view>
+    </block>
+  </view>
+</view>

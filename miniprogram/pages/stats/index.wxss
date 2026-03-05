@@ -1,0 +1,12 @@
+.stat-line {
+  padding: 8rpx 0;
+}
+
+.top-item {
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #edf0f5;
+}
+
+.top-item:last-child {
+  border-bottom: none;
+}

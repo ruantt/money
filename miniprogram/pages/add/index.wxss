@@ -1,0 +1,31 @@
+.field {
+  margin-bottom: 20rpx;
+}
+
+.label {
+  color: #5b6578;
+  margin-bottom: 10rpx;
+}
+
+.input {
+  background: #f6f8fb;
+  border-radius: 10rpx;
+  height: 72rpx;
+  padding: 0 20rpx;
+}
+
+.type-group {
+  display: flex;
+  gap: 30rpx;
+}
+
+.radio-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.picker-value {
+  color: #1f2d3d;
+  font-weight: 500;
+}

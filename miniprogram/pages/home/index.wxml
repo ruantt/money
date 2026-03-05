@@ -1,0 +1,38 @@
+<view class="page">
+  <view class="card">
+    <view class="section-title">本月概览（{{summary.month}}）</view>
+    <view class="summary-row">
+      <view class="summary-item">
+        <view class="muted">本月支出</view>
+        <view class="amount-expense">¥{{summary.total_expense}}</view>
+      </view>
+      <view class="summary-item">
+        <view class="muted">本月收入</view>
+        <view class="amount-income">¥{{summary.total_income}}</view>
+      </view>
+      <view class="summary-item">
+        <view class="muted">结余</view>
+        <view>¥{{summary.balance}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{transactions.length === 0}}" class="card placeholder">暂无账单，去“记一笔”添加</view>
+
+  <block wx:for="{{transactions}}" wx:key="id">
+    <view class="card bill-card">
+      <view class="row">
+        <view class="amount {{item.type === 'income' ? 'amount-income' : 'amount-expense'}}">
+          {{item.type === 'income' ? '+' : '-'}}¥{{item.amount_text}}
+        </view>
+        <view class="type-tag {{item.type === 'income' ? 'income-tag' : 'expense-tag'}}">{{item.type_text}}</view>
+      </view>
+      <view class="bill-meta">类目：{{item.category}}</view>
+      <view class="bill-meta">备注：{{item.note || '无'}}</view>
+      <view class="row bill-footer">
+        <view class="muted">{{item.date}}</view>
+        <button class="delete-btn" data-id="{{item.id}}" bindtap="onDeleteTap">删除</button>
+      </view>
+    </view>
+  </block>
+</view>

@@ -1,0 +1,44 @@
+<view class="page">
+  <view class="card">
+    <view class="section-title">新增账单</view>
+
+    <view class="field">
+      <view class="label">金额</view>
+      <input class="input" type="digit" placeholder="请输入金额" value="{{amount}}" bindinput="onAmountInput" />
+    </view>
+
+    <view class="field">
+      <view class="label">类型</view>
+      <radio-group class="type-group" bindchange="onTypeChange">
+        <label class="radio-item">
+          <radio value="expense" checked="{{type === 'expense'}}" />支出
+        </label>
+        <label class="radio-item">
+          <radio value="income" checked="{{type === 'income'}}" />收入
+        </label>
+      </radio-group>
+    </view>
+
+    <view class="field row">
+      <view class="label">类目</view>
+      <picker mode="selector" range="{{categoryOptions}}" value="{{categoryIndex}}" bindchange="onCategoryChange">
+        <view class="picker-value">{{categoryOptions[categoryIndex]}}</view>
+      </picker>
+    </view>
+
+    <view class="field row">
+      <view class="label">日期</view>
+      <picker mode="date" value="{{date}}" bindchange="onDateChange">
+        <view class="picker-value">{{date}}</view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <view class="label">备注</view>
+      <input class="input" placeholder="可选" value="{{note}}" bindinput="onNoteInput" />
+    </view>
+
+    <button class="primary-btn" bindtap="onSave">保存</button>
+    <button class="secondary-btn" bindtap="onFillExample">快速填充示例</button>
+  </view>
+</view>
