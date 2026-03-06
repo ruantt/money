@@ -17,6 +17,15 @@
     </view>
   </view>
 
+  <view class="card">
+    <view class="section-title">云函数测试</view>
+    <view class="muted">点击按钮测试 asrTranscribe 云函数是否能返回固定结果。</view>
+    <button class="primary-btn" loading="{{cloudTestLoading}}" bindtap="onTestCloudFunction">测试云函数</button>
+    <view wx:if="{{cloudTestResult}}" class="cloud-result {{cloudTestStatus === 'error' ? 'cloud-result-error' : 'cloud-result-success'}}">
+      {{cloudTestResult}}
+    </view>
+  </view>
+
   <view wx:if="{{transactions.length === 0}}" class="card placeholder">暂无账单，去“记一笔”添加</view>
 
   <block wx:for="{{transactions}}" wx:key="id">

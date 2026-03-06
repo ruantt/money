@@ -13,6 +13,9 @@ Page({
       balance: "0.00",
     },
     transactions: [],
+    cloudTestLoading: false,
+    cloudTestStatus: "",
+    cloudTestResult: "",
   },
 
   onShow() {
@@ -73,6 +76,50 @@ Page({
         });
         this.reload();
       },
+    });
+  },
+
+  onTestCloudFunction() {
+    if (!wx.cloud) {
+      const message = "当前基础库不支持云开发，请先确认基础库版本。";
+      console.error(message);
+      this.setData({
+        cloudTestLoading: false,
+        cloudTestStatus: "error",
+        cloudTestResult: message,
+      });
+      return;
+    }
+
+    this.setData({
+      cloudTestLoading: true,
+      cloudTestStatus: "",
+      cloudTestResult: "调用中...",
+    });
+
+    wx.cloud.callFunction({
+      name: "asrTranscribe",
+      data: {
+        test: "hello",
+      },
+    }).then((res) => {
+      console.log("asrTranscribe call success:", res);
+
+      this.setData({
+        cloudTestLoading: false,
+        cloudTestStatus: "success",
+        cloudTestResult: JSON.stringify(res.result, null, 2),
+      });
+    }).catch((error) => {
+      console.error("asrTranscribe call failed:", error);
+
+      this.setData({
+        cloudTestLoading: false,
+        cloudTestStatus: "error",
+        cloudTestResult: error && error.errMsg
+          ? error.errMsg
+          : "调用失败，请检查云环境和云函数部署状态。",
+      });
     });
   },
 });
