@@ -17,77 +17,9 @@
     </view>
   </view>
 
-  <view class="card">
-    <view class="section-title">录音链路测试</view>
-    <view class="info-row">
-      <view class="muted">当前状态</view>
-      <view>{{recordStatusText}}</view>
-    </view>
-    <view class="info-row">
-      <view class="muted">录音时长</view>
-      <view>{{recordSeconds}} 秒</view>
-    </view>
-    <view class="info-row">
-      <view class="muted">播放状态</view>
-      <view>{{playStatusText}}</view>
-    </view>
-    <view wx:if="{{pauseResumeTip}}" class="muted">{{pauseResumeTip}}</view>
-    <view class="button-row">
-      <button class="primary-btn action-btn" disabled="{{recordStatus === 'recording' || recordStatus === 'paused'}}" bindtap="onStartRecordTap">开始录音</button>
-      <button class="secondary-btn action-btn" disabled="{{!supportsPauseResume || recordStatus !== 'recording'}}" bindtap="onPauseRecordTap">暂停录音</button>
-      <button class="secondary-btn action-btn" disabled="{{!supportsPauseResume || recordStatus !== 'paused'}}" bindtap="onResumeRecordTap">继续录音</button>
-      <button class="danger-btn action-btn" disabled="{{recordStatus !== 'recording' && recordStatus !== 'paused'}}" bindtap="onStopRecordTap">停止录音</button>
-    </view>
-    <view class="path-block">
-      <view class="muted">tempFilePath</view>
-      <view class="path-text">{{tempFilePath || "暂无录音文件"}}</view>
-    </view>
-    <view class="button-row">
-      <button class="secondary-btn action-btn" disabled="{{!tempFilePath || playStatus === 'playing'}}" bindtap="onPlayRecordTap">播放录音</button>
-      <button class="danger-btn action-btn" disabled="{{playStatus !== 'playing'}}" bindtap="onStopPlayTap">停止播放</button>
-    </view>
-    <view wx:if="{{recordError}}" class="cloud-result cloud-result-error">{{recordError}}</view>
-    <view wx:if="{{playError}}" class="cloud-result cloud-result-error">{{playError}}</view>
+  <view wx:if="{{transactions.length === 0}}" class="card placeholder">
+    暂无账单，去“记一笔”录一条或手动添加。
   </view>
-
-  <view class="card">
-    <view class="section-title">录音上传测试</view>
-    <view class="info-row">
-      <view class="muted">上传状态</view>
-      <view>{{uploadStatusText}}</view>
-    </view>
-    <button class="primary-btn" loading="{{uploadStatus === 'uploading'}}" disabled="{{!tempFilePath || uploadStatus === 'uploading'}}" bindtap="onUploadRecordTap">上传录音</button>
-    <view class="path-block">
-      <view class="muted">fileID</view>
-      <view class="path-text">{{uploadFileID || "上传成功后会显示 fileID"}}</view>
-    </view>
-    <view wx:if="{{uploadError}}" class="cloud-result cloud-result-error">{{uploadError}}</view>
-  </view>
-
-  <view class="card">
-    <view class="section-title">云端处理测试</view>
-    <view class="info-row">
-      <view class="muted">处理状态</view>
-      <view>{{processStatusText}}</view>
-    </view>
-    <button class="primary-btn" loading="{{processStatus === 'processing'}}" disabled="{{!uploadFileID || processStatus === 'processing'}}" bindtap="onSubmitProcessTap">提交云端处理</button>
-    <view class="path-block">
-      <view class="muted">处理结果</view>
-      <view class="path-text">{{processResult || "提交成功后会显示处理结果"}}</view>
-    </view>
-    <view wx:if="{{processError}}" class="cloud-result cloud-result-error">{{processError}}</view>
-  </view>
-
-  <view class="card">
-    <view class="section-title">云函数测试</view>
-    <view class="muted">点击按钮继续测试 asrTranscribe 云函数返回固定结果。</view>
-    <button class="primary-btn" loading="{{cloudTestLoading}}" bindtap="onTestCloudFunction">测试云函数</button>
-    <view wx:if="{{cloudTestResult}}" class="cloud-result {{cloudTestStatus === 'error' ? 'cloud-result-error' : 'cloud-result-success'}}">
-      {{cloudTestResult}}
-    </view>
-  </view>
-
-  <view wx:if="{{transactions.length === 0}}" class="card placeholder">暂无账单，去“记一笔”添加</view>
 
   <block wx:for="{{transactions}}" wx:key="id">
     <view class="card bill-card">
@@ -95,7 +27,9 @@
         <view class="amount {{item.type === 'income' ? 'amount-income' : 'amount-expense'}}">
           {{item.type === 'income' ? '+' : '-'}}¥{{item.amount_text}}
         </view>
-        <view class="type-tag {{item.type === 'income' ? 'income-tag' : 'expense-tag'}}">{{item.type_text}}</view>
+        <view class="type-tag {{item.type === 'income' ? 'income-tag' : 'expense-tag'}}">
+          {{item.type_text}}
+        </view>
       </view>
       <view class="bill-meta">类目：{{item.category}}</view>
       <view class="bill-meta">备注：{{item.note || "无"}}</view>
