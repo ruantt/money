@@ -8,6 +8,41 @@
   flex: 1;
 }
 
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.action-btn {
+  width: calc((100% - 16rpx) / 2);
+  margin-top: 0;
+}
+
+.path-block {
+  margin-top: 20rpx;
+}
+
+.path-text {
+  margin-top: 10rpx;
+  padding: 20rpx;
+  border-radius: 12rpx;
+  background: #f6f8fc;
+  color: #334155;
+  word-break: break-all;
+  white-space: pre-wrap;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
 .bill-card {
   margin-bottom: 18rpx;
 }
