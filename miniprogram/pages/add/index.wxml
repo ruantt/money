@@ -14,6 +14,7 @@
       <view>{{playStatusText}}</view>
     </view>
     <view wx:if="{{pauseResumeTip}}" class="muted">{{pauseResumeTip}}</view>
+
     <view class="button-row">
       <button class="primary-btn action-btn" disabled="{{recordStatus === 'recording' || recordStatus === 'paused'}}" bindtap="onStartRecordTap">开始录音</button>
       <button class="secondary-btn action-btn" disabled="{{!supportsPauseResume || recordStatus !== 'recording'}}" bindtap="onPauseRecordTap">暂停录音</button>
@@ -55,12 +56,57 @@
     <button class="primary-btn" loading="{{processStatus === 'processing'}}" disabled="{{!uploadFileID || processStatus === 'processing'}}" bindtap="onSubmitProcessTap">提交云端处理</button>
 
     <view class="path-block">
+      <view class="muted">transcript</view>
+      <view class="path-text">{{processTranscript || "提交成功后会显示 transcript"}}</view>
+    </view>
+
+    <view class="path-block">
       <view class="muted">处理结果</view>
-      <view class="path-text">{{processResult || "提交成功后会显示 transcript 和处理结果"}}</view>
+      <view class="path-text">{{processResult || "提交成功后会显示完整处理结果"}}</view>
     </view>
 
     <view wx:if="{{uploadError}}" class="cloud-result cloud-result-error">{{uploadError}}</view>
     <view wx:if="{{processError}}" class="cloud-result cloud-result-error">{{processError}}</view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">AI 解析记账</view>
+    <view class="info-row">
+      <view class="muted">解析状态</view>
+      <view>{{parseStatusText}}</view>
+    </view>
+    <button class="primary-btn" loading="{{parseStatus === 'processing'}}" disabled="{{!processTranscript || parseStatus === 'processing'}}" bindtap="onParseBillDraftTap">AI 解析记账</button>
+
+    <view class="path-block">
+      <view class="muted">解析提示</view>
+      <view class="path-text">{{parseMessage || "点击按钮后会生成结构化记账草稿"}}</view>
+    </view>
+
+    <view wx:if="{{parseDrafts.length > 0}}" class="draft-list">
+      <block wx:for="{{parseDrafts}}" wx:key="index">
+        <view class="draft-card">
+          <view class="row">
+            <view class="draft-amount">¥{{item.amount}}</view>
+            <view class="type-tag {{item.type === 'income' ? 'income-tag' : 'expense-tag'}}">{{item.type}}</view>
+          </view>
+          <view class="draft-meta">分类：{{item.category}}</view>
+          <view class="draft-meta">备注：{{item.note}}</view>
+          <view class="draft-meta">日期词：{{item.dateText}}</view>
+        </view>
+      </block>
+    </view>
+
+    <view wx:if="{{parseMissingFields.length > 0}}" class="path-block">
+      <view class="muted">缺失字段</view>
+      <view class="path-text">{{parseMissingFieldsText}}</view>
+    </view>
+
+    <view wx:if="{{parseDrafts.length > 0}}" class="button-row">
+      <button class="primary-btn action-btn" bindtap="onConfirmDraftTap">确认保存</button>
+      <button class="secondary-btn action-btn" bindtap="onCancelDraftTap">取消</button>
+    </view>
+
+    <view wx:if="{{parseError}}" class="cloud-result cloud-result-error">{{parseError}}</view>
   </view>
 
   <view class="card">

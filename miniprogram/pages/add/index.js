@@ -57,6 +57,20 @@ const PROCESS_STATUS_TEXT = {
   [PROCESS_STATUS.ERROR]: "处理失败",
 };
 
+const PARSE_STATUS = {
+  IDLE: "idle",
+  PROCESSING: "processing",
+  SUCCESS: "success",
+  ERROR: "error",
+};
+
+const PARSE_STATUS_TEXT = {
+  [PARSE_STATUS.IDLE]: "未解析",
+  [PARSE_STATUS.PROCESSING]: "解析中",
+  [PARSE_STATUS.SUCCESS]: "解析成功",
+  [PARSE_STATUS.ERROR]: "解析失败",
+};
+
 function today() {
   const now = new Date();
   const y = now.getFullYear();
@@ -113,8 +127,16 @@ Page({
     uploadError: "",
     processStatus: PROCESS_STATUS.IDLE,
     processStatusText: PROCESS_STATUS_TEXT[PROCESS_STATUS.IDLE],
+    processTranscript: "",
     processResult: "",
     processError: "",
+    parseStatus: PARSE_STATUS.IDLE,
+    parseStatusText: PARSE_STATUS_TEXT[PARSE_STATUS.IDLE],
+    parseMessage: "",
+    parseDrafts: [],
+    parseMissingFields: [],
+    parseMissingFieldsText: "",
+    parseError: "",
   },
 
   onLoad() {
@@ -171,6 +193,14 @@ Page({
     });
   },
 
+  setParseState(status, extraData) {
+    this.setData({
+      parseStatus: status,
+      parseStatusText: PARSE_STATUS_TEXT[status],
+      ...(extraData || {}),
+    });
+  },
+
   resetPlayState() {
     this.setPlayState(PLAY_STATUS.IDLE, {
       playError: "",
@@ -186,8 +216,19 @@ Page({
 
   resetProcessState() {
     this.setProcessState(PROCESS_STATUS.IDLE, {
+      processTranscript: "",
       processResult: "",
       processError: "",
+    });
+  },
+
+  resetParseState() {
+    this.setParseState(PARSE_STATUS.IDLE, {
+      parseMessage: "",
+      parseDrafts: [],
+      parseMissingFields: [],
+      parseMissingFieldsText: "",
+      parseError: "",
     });
   },
 
@@ -215,6 +256,7 @@ Page({
       this.resetPlayState();
       this.resetUploadState();
       this.resetProcessState();
+      this.resetParseState();
       this.setRecordState(RECORD_STATUS.RECORDING, {
         recordSeconds: 0,
         tempFilePath: "",
@@ -251,6 +293,7 @@ Page({
       this.resetPlayState();
       this.resetUploadState();
       this.resetProcessState();
+      this.resetParseState();
 
       const durationSeconds = typeof res.duration === "number"
         ? Math.max(0, Math.round(res.duration / 1000))
@@ -271,6 +314,7 @@ Page({
       this.resetPlayState();
       this.resetUploadState();
       this.resetProcessState();
+      this.resetParseState();
 
       this.setRecordState(RECORD_STATUS.IDLE, {
         recordSeconds: 0,
@@ -508,6 +552,7 @@ Page({
         this.resetPlayState();
         this.resetUploadState();
         this.resetProcessState();
+        this.resetParseState();
         this.setRecordState(RECORD_STATUS.IDLE, {
           recordSeconds: 0,
           tempFilePath: "",
@@ -531,6 +576,7 @@ Page({
         this.resetPlayState();
         this.resetUploadState();
         this.resetProcessState();
+        this.resetParseState();
         this.setRecordState(RECORD_STATUS.IDLE, {
           recordSeconds: 0,
           tempFilePath: "",
@@ -629,6 +675,7 @@ Page({
     const cloudPath = this.buildUploadCloudPath();
 
     this.resetProcessState();
+    this.resetParseState();
     this.setUploadState(UPLOAD_STATUS.UPLOADING, {
       uploadFileID: "",
       uploadError: "",
@@ -641,6 +688,7 @@ Page({
       console.log("record upload success:", res);
 
       this.resetProcessState();
+      this.resetParseState();
       this.setUploadState(UPLOAD_STATUS.SUCCESS, {
         uploadFileID: res.fileID || "",
         uploadError: "",
@@ -649,6 +697,7 @@ Page({
       console.error("record upload failed:", error);
 
       this.resetProcessState();
+      this.resetParseState();
       this.setUploadState(UPLOAD_STATUS.ERROR, {
         uploadFileID: "",
         uploadError: error && error.errMsg
@@ -663,6 +712,7 @@ Page({
       const message = "请先上传录音文件，再提交云端处理。";
       console.error(message);
       this.setProcessState(PROCESS_STATUS.ERROR, {
+        processTranscript: "",
         processResult: "",
         processError: message,
       });
@@ -673,13 +723,16 @@ Page({
       const message = "当前基础库不支持云开发，请先确认基础库版本。";
       console.error(message);
       this.setProcessState(PROCESS_STATUS.ERROR, {
+        processTranscript: "",
         processResult: "",
         processError: message,
       });
       return;
     }
 
+    this.resetParseState();
     this.setProcessState(PROCESS_STATUS.PROCESSING, {
+      processTranscript: "",
       processResult: "",
       processError: "",
     });
@@ -697,6 +750,7 @@ Page({
       const result = res.result || {};
       if (!result.ok) {
         this.setProcessState(PROCESS_STATUS.ERROR, {
+          processTranscript: "",
           processResult: "",
           processError: result.msg || "云端处理失败。",
         });
@@ -704,6 +758,7 @@ Page({
       }
 
       this.setProcessState(PROCESS_STATUS.SUCCESS, {
+        processTranscript: result.transcript || "",
         processResult: JSON.stringify(result, null, 2),
         processError: "",
       });
@@ -711,11 +766,117 @@ Page({
       console.error("asrTranscribe process failed:", error);
 
       this.setProcessState(PROCESS_STATUS.ERROR, {
+        processTranscript: "",
         processResult: "",
         processError: error && error.errMsg
           ? error.errMsg
           : "云端处理失败，请检查云函数部署和云环境配置。",
       });
+    });
+  },
+
+  onParseBillDraftTap() {
+    const transcript = (this.data.processTranscript || "").trim();
+    if (!transcript) {
+      const message = "请先完成云端处理，拿到 transcript 后再进行 AI 解析。";
+      console.error(message);
+      this.setParseState(PARSE_STATUS.ERROR, {
+        parseMessage: "",
+        parseDrafts: [],
+        parseMissingFields: [],
+        parseMissingFieldsText: "",
+        parseError: message,
+      });
+      return;
+    }
+
+    if (!wx.cloud) {
+      const message = "当前基础库不支持云开发，请先确认基础库版本。";
+      console.error(message);
+      this.setParseState(PARSE_STATUS.ERROR, {
+        parseMessage: "",
+        parseDrafts: [],
+        parseMissingFields: [],
+        parseMissingFieldsText: "",
+        parseError: message,
+      });
+      return;
+    }
+
+    this.setParseState(PARSE_STATUS.PROCESSING, {
+      parseMessage: "",
+      parseDrafts: [],
+      parseMissingFields: [],
+      parseMissingFieldsText: "",
+      parseError: "",
+    });
+
+    wx.cloud.callFunction({
+      name: "parseBillDraft",
+      data: {
+        transcript,
+      },
+    }).then((res) => {
+      console.log("parseBillDraft success:", res);
+
+      const result = res.result || {};
+      if (!result.ok) {
+        this.setParseState(PARSE_STATUS.ERROR, {
+          parseMessage: "",
+          parseDrafts: [],
+          parseMissingFields: [],
+          parseMissingFieldsText: "",
+          parseError: result.message || "AI 解析失败。",
+        });
+        return;
+      }
+
+      const drafts = Array.isArray(result.drafts) ? result.drafts : [];
+      const missingFields = Array.isArray(result.missingFields) ? result.missingFields : [];
+
+      this.setParseState(PARSE_STATUS.SUCCESS, {
+        parseMessage: result.message || "解析成功",
+        parseDrafts: drafts,
+        parseMissingFields: missingFields,
+        parseMissingFieldsText: missingFields.join("、"),
+        parseError: "",
+      });
+    }).catch((error) => {
+      console.error("parseBillDraft failed:", error);
+
+      this.setParseState(PARSE_STATUS.ERROR, {
+        parseMessage: "",
+        parseDrafts: [],
+        parseMissingFields: [],
+        parseMissingFieldsText: "",
+        parseError: error && error.errMsg
+          ? error.errMsg
+          : "AI 解析失败，请检查云函数部署和云环境配置。",
+      });
+    });
+  },
+
+  onConfirmDraftTap() {
+    if (!this.data.parseDrafts.length) {
+      wx.showToast({
+        title: "当前没有可确认的草稿",
+        icon: "none",
+      });
+      return;
+    }
+
+    console.log("confirm bill drafts:", this.data.parseDrafts);
+    wx.showToast({
+      title: "当前阶段仅确认，不入库",
+      icon: "none",
+    });
+  },
+
+  onCancelDraftTap() {
+    this.resetParseState();
+    wx.showToast({
+      title: "已取消",
+      icon: "none",
     });
   },
 });
