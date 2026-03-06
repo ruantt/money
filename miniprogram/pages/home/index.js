@@ -14,8 +14,46 @@ const RECORD_STATUS_TEXT = {
   [RECORD_STATUS.DONE]: "已完成",
 };
 
+const UPLOAD_STATUS = {
+  IDLE: "idle",
+  UPLOADING: "uploading",
+  SUCCESS: "success",
+  ERROR: "error",
+};
+
+const UPLOAD_STATUS_TEXT = {
+  [UPLOAD_STATUS.IDLE]: "未上传",
+  [UPLOAD_STATUS.UPLOADING]: "上传中",
+  [UPLOAD_STATUS.SUCCESS]: "上传成功",
+  [UPLOAD_STATUS.ERROR]: "上传失败",
+};
+
 function formatMoney(value) {
   return Number(value || 0).toFixed(2);
+}
+
+function padNumber(value) {
+  return String(value).padStart(2, "0");
+}
+
+function buildRecordDateFolder(date) {
+  const year = date.getFullYear();
+  const month = padNumber(date.getMonth() + 1);
+  const day = padNumber(date.getDate());
+  return `${year}-${month}-${day}`;
+}
+
+function getFileExtension(filePath) {
+  if (!filePath || typeof filePath !== "string") {
+    return "mp3";
+  }
+
+  const matched = filePath.match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
+  if (matched && matched[1]) {
+    return matched[1].toLowerCase();
+  }
+
+  return "mp3";
 }
 
 Page({
@@ -34,6 +72,10 @@ Page({
     recordSeconds: 0,
     tempFilePath: "",
     recordError: "",
+    uploadStatus: UPLOAD_STATUS.IDLE,
+    uploadStatusText: UPLOAD_STATUS_TEXT[UPLOAD_STATUS.IDLE],
+    uploadFileID: "",
+    uploadError: "",
     cloudTestLoading: false,
     cloudTestStatus: "",
     cloudTestResult: "",
@@ -71,6 +113,21 @@ Page({
     });
   },
 
+  setUploadState(status, extraData) {
+    this.setData({
+      uploadStatus: status,
+      uploadStatusText: UPLOAD_STATUS_TEXT[status],
+      ...(extraData || {}),
+    });
+  },
+
+  resetUploadState() {
+    this.setUploadState(UPLOAD_STATUS.IDLE, {
+      uploadFileID: "",
+      uploadError: "",
+    });
+  },
+
   initRecorder() {
     this.recorderManager = wx.getRecorderManager();
     const supportsPauseResume = typeof this.recorderManager.pause === "function"
@@ -91,6 +148,7 @@ Page({
       console.log("recorder start");
       this.resetRecordProgress();
       this.startRecordTimer();
+      this.resetUploadState();
       this.setRecordState(RECORD_STATUS.RECORDING, {
         recordSeconds: 0,
         tempFilePath: "",
@@ -123,6 +181,8 @@ Page({
         this.clearRecordTimer();
       }
 
+      this.resetUploadState();
+
       const durationSeconds = typeof res.duration === "number"
         ? Math.max(0, Math.round(res.duration / 1000))
         : this.data.recordSeconds;
@@ -138,6 +198,7 @@ Page({
       console.error("recorder error:", error);
       this.clearRecordTimer();
       this.resetRecordProgress();
+      this.resetUploadState();
 
       this.setRecordState(RECORD_STATUS.IDLE, {
         recordSeconds: 0,
@@ -201,6 +262,16 @@ Page({
     }
   },
 
+  buildUploadCloudPath() {
+    const now = new Date();
+    const dateFolder = buildRecordDateFolder(now);
+    const timestamp = now.getTime();
+    const randomSuffix = Math.random().toString(36).slice(2, 8);
+    const extension = getFileExtension(this.data.tempFilePath);
+
+    return `recordings/${dateFolder}/${timestamp}-${randomSuffix}.${extension}`;
+  },
+
   reload(done) {
     const summaryRaw = statsThisMonth();
     const summary = {
@@ -262,6 +333,7 @@ Page({
       success: () => {
         this.clearRecordTimer();
         this.resetRecordProgress();
+        this.resetUploadState();
         this.setRecordState(RECORD_STATUS.IDLE, {
           recordSeconds: 0,
           tempFilePath: "",
@@ -281,6 +353,7 @@ Page({
 
         this.clearRecordTimer();
         this.resetRecordProgress();
+        this.resetUploadState();
         this.setRecordState(RECORD_STATUS.IDLE, {
           recordSeconds: 0,
           tempFilePath: "",
@@ -328,6 +401,56 @@ Page({
     }
 
     this.recorderManager.stop();
+  },
+
+  onUploadRecordTap() {
+    if (!this.data.tempFilePath) {
+      const message = "请先完成录音，再上传录音文件。";
+      console.error(message);
+      this.setUploadState(UPLOAD_STATUS.ERROR, {
+        uploadFileID: "",
+        uploadError: message,
+      });
+      return;
+    }
+
+    if (!wx.cloud) {
+      const message = "当前基础库不支持云开发，请先确认基础库版本。";
+      console.error(message);
+      this.setUploadState(UPLOAD_STATUS.ERROR, {
+        uploadFileID: "",
+        uploadError: message,
+      });
+      return;
+    }
+
+    const cloudPath = this.buildUploadCloudPath();
+
+    this.setUploadState(UPLOAD_STATUS.UPLOADING, {
+      uploadFileID: "",
+      uploadError: "",
+    });
+
+    wx.cloud.uploadFile({
+      cloudPath,
+      filePath: this.data.tempFilePath,
+    }).then((res) => {
+      console.log("record upload success:", res);
+
+      this.setUploadState(UPLOAD_STATUS.SUCCESS, {
+        uploadFileID: res.fileID || "",
+        uploadError: "",
+      });
+    }).catch((error) => {
+      console.error("record upload failed:", error);
+
+      this.setUploadState(UPLOAD_STATUS.ERROR, {
+        uploadFileID: "",
+        uploadError: error && error.errMsg
+          ? error.errMsg
+          : "上传失败，请检查云环境、网络和文件路径。",
+      });
+    });
   },
 
   onTestCloudFunction() {

@@ -42,6 +42,20 @@
   </view>
 
   <view class="card">
+    <view class="section-title">录音上传测试</view>
+    <view class="info-row">
+      <view class="muted">上传状态</view>
+      <view>{{uploadStatusText}}</view>
+    </view>
+    <button class="primary-btn" loading="{{uploadStatus === 'uploading'}}" disabled="{{!tempFilePath || uploadStatus === 'uploading'}}" bindtap="onUploadRecordTap">上传录音</button>
+    <view class="path-block">
+      <view class="muted">fileID</view>
+      <view class="path-text">{{uploadFileID || "上传成功后会显示 fileID"}}</view>
+    </view>
+    <view wx:if="{{uploadError}}" class="cloud-result cloud-result-error">{{uploadError}}</view>
+  </view>
+
+  <view class="card">
     <view class="section-title">云函数测试</view>
     <view class="muted">点击按钮继续测试 asrTranscribe 云函数返回固定结果。</view>
     <button class="primary-btn" loading="{{cloudTestLoading}}" bindtap="onTestCloudFunction">测试云函数</button>
