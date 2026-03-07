@@ -71,6 +71,156 @@ const PARSE_STATUS_TEXT = {
   [PARSE_STATUS.ERROR]: "解析失败",
 };
 
+const VOICE_FLOW_STAGE = {
+  IDLE: "idle",
+  RECORDING: "recording",
+  RECORD_FINISHED: "recordFinished",
+  UPLOADING: "uploading",
+  UPLOADED: "uploaded",
+  TRANSCRIBING: "transcribing",
+  TRANSCRIBED: "transcribed",
+  PARSING: "parsing",
+  PARSED: "parsed",
+  ERROR: "error",
+};
+
+const VOICE_FLOW_STEP = {
+  RECORD: "record",
+  UPLOAD: "upload",
+  TRANSCRIBE: "transcribe",
+  PARSE: "parse",
+  DRAFT: "draft",
+};
+
+const VOICE_FLOW_STEP_LIST = [
+  {
+    key: VOICE_FLOW_STEP.RECORD,
+    label: "录音完成",
+  },
+  {
+    key: VOICE_FLOW_STEP.UPLOAD,
+    label: "上传录音",
+  },
+  {
+    key: VOICE_FLOW_STEP.TRANSCRIBE,
+    label: "识别语音",
+  },
+  {
+    key: VOICE_FLOW_STEP.PARSE,
+    label: "AI 解析",
+  },
+  {
+    key: VOICE_FLOW_STEP.DRAFT,
+    label: "生成草稿",
+  },
+];
+
+const VOICE_FLOW_STAGE_MESSAGE = {
+  [VOICE_FLOW_STAGE.IDLE]: "点击开始录音，说完后点击停止，系统会自动生成账单草稿。",
+  [VOICE_FLOW_STAGE.RECORDING]: "正在录音，停止后将自动上传并解析。",
+  [VOICE_FLOW_STAGE.RECORD_FINISHED]: "录音完成，正在准备上传。",
+  [VOICE_FLOW_STAGE.UPLOADING]: "正在上传录音到云端。",
+  [VOICE_FLOW_STAGE.UPLOADED]: "录音上传完成，准备开始识别。",
+  [VOICE_FLOW_STAGE.TRANSCRIBING]: "正在识别你说的话。",
+  [VOICE_FLOW_STAGE.TRANSCRIBED]: "语音识别完成，准备进行 AI 解析。",
+  [VOICE_FLOW_STAGE.PARSING]: "AI 正在整理账单内容。",
+  [VOICE_FLOW_STAGE.PARSED]: "已生成账单草稿，请确认保存。",
+  [VOICE_FLOW_STAGE.ERROR]: "处理失败，请重试。",
+};
+
+const VOICE_FLOW_PROGRESS = {
+  [VOICE_FLOW_STAGE.IDLE]: {
+    completeCount: 0,
+    activeStep: "",
+  },
+  [VOICE_FLOW_STAGE.RECORDING]: {
+    completeCount: 0,
+    activeStep: VOICE_FLOW_STEP.RECORD,
+  },
+  [VOICE_FLOW_STAGE.RECORD_FINISHED]: {
+    completeCount: 1,
+    activeStep: "",
+  },
+  [VOICE_FLOW_STAGE.UPLOADING]: {
+    completeCount: 1,
+    activeStep: VOICE_FLOW_STEP.UPLOAD,
+  },
+  [VOICE_FLOW_STAGE.UPLOADED]: {
+    completeCount: 2,
+    activeStep: "",
+  },
+  [VOICE_FLOW_STAGE.TRANSCRIBING]: {
+    completeCount: 2,
+    activeStep: VOICE_FLOW_STEP.TRANSCRIBE,
+  },
+  [VOICE_FLOW_STAGE.TRANSCRIBED]: {
+    completeCount: 3,
+    activeStep: "",
+  },
+  [VOICE_FLOW_STAGE.PARSING]: {
+    completeCount: 3,
+    activeStep: VOICE_FLOW_STEP.PARSE,
+  },
+  [VOICE_FLOW_STAGE.PARSED]: {
+    completeCount: 5,
+    activeStep: "",
+  },
+};
+
+function createFlowError(step, message) {
+  const error = new Error(message);
+  error.step = step;
+  return error;
+}
+
+function buildVoiceFlowSteps(stage, errorStep) {
+  if (stage === VOICE_FLOW_STAGE.ERROR && errorStep) {
+    const errorIndex = VOICE_FLOW_STEP_LIST.findIndex((item) => item.key === errorStep);
+    return VOICE_FLOW_STEP_LIST.map((item, index) => {
+      if (index < errorIndex) {
+        return {
+          ...item,
+          status: "done",
+        };
+      }
+
+      if (index === errorIndex) {
+        return {
+          ...item,
+          status: "error",
+        };
+      }
+
+      return {
+        ...item,
+        status: "wait",
+      };
+    });
+  }
+
+  const progress = VOICE_FLOW_PROGRESS[stage] || VOICE_FLOW_PROGRESS[VOICE_FLOW_STAGE.IDLE];
+  return VOICE_FLOW_STEP_LIST.map((item, index) => {
+    if (index < progress.completeCount) {
+      return {
+        ...item,
+        status: "done",
+      };
+    }
+
+    if (item.key === progress.activeStep) {
+      return {
+        ...item,
+        status: "active",
+      };
+    }
+
+    return {
+      ...item,
+      status: "wait",
+    };
+  });
+}
+
 function today() {
   const now = new Date();
   const y = now.getFullYear();
@@ -160,11 +310,20 @@ Page({
     parseMissingFields: [],
     parseMissingFieldsText: "",
     parseError: "",
+    confirmSaving: false,
+    voiceFlowStage: VOICE_FLOW_STAGE.IDLE,
+    voiceFlowMessage: VOICE_FLOW_STAGE_MESSAGE[VOICE_FLOW_STAGE.IDLE],
+    voiceFlowError: "",
+    voiceFlowErrorStep: "",
+    voiceFlowBusy: false,
+    voiceFlowSteps: buildVoiceFlowSteps(VOICE_FLOW_STAGE.IDLE, ""),
   },
 
   onLoad() {
     this.isConfirmSaving = false;
     this.isManualSaving = false;
+    this.isAutoVoiceProcessing = false;
+    this.autoVoiceFlowId = 0;
     this.initRecorder();
     this.initPlayer();
   },
@@ -226,6 +385,38 @@ Page({
     });
   },
 
+  setVoiceFlow(stage, extraData) {
+    const nextData = extraData || {};
+    const errorStep = nextData.errorStep || "";
+    const message = nextData.message || VOICE_FLOW_STAGE_MESSAGE[stage] || "";
+    const error = nextData.error || "";
+    const busy = typeof nextData.busy === "boolean"
+      ? nextData.busy
+      : [
+        VOICE_FLOW_STAGE.UPLOADING,
+        VOICE_FLOW_STAGE.TRANSCRIBING,
+        VOICE_FLOW_STAGE.PARSING,
+      ].includes(stage);
+
+    this.setData({
+      voiceFlowStage: stage,
+      voiceFlowMessage: message,
+      voiceFlowError: error,
+      voiceFlowErrorStep: errorStep,
+      voiceFlowBusy: busy,
+      voiceFlowSteps: buildVoiceFlowSteps(stage, errorStep),
+    });
+  },
+
+  resetVoiceFlow(message) {
+    this.setVoiceFlow(VOICE_FLOW_STAGE.IDLE, {
+      message: message || VOICE_FLOW_STAGE_MESSAGE[VOICE_FLOW_STAGE.IDLE],
+      error: "",
+      errorStep: "",
+      busy: false,
+    });
+  },
+
   resetPlayState() {
     this.setPlayState(PLAY_STATUS.IDLE, {
       playError: "",
@@ -275,6 +466,8 @@ Page({
 
     this.recorderManager.onStart(() => {
       console.log("recorder start");
+      this.autoVoiceFlowId += 1;
+      this.isAutoVoiceProcessing = false;
       this.stopPlayback();
       this.resetRecordProgress();
       this.startRecordTimer();
@@ -282,6 +475,14 @@ Page({
       this.resetUploadState();
       this.resetProcessState();
       this.resetParseState();
+      this.setData({
+        confirmSaving: false,
+      });
+      this.setVoiceFlow(VOICE_FLOW_STAGE.RECORDING, {
+        error: "",
+        errorStep: "",
+        busy: false,
+      });
       this.setRecordState(RECORD_STATUS.RECORDING, {
         recordSeconds: 0,
         tempFilePath: "",
@@ -319,16 +520,35 @@ Page({
       this.resetUploadState();
       this.resetProcessState();
       this.resetParseState();
+      this.setData({
+        confirmSaving: false,
+      });
 
       const durationSeconds = typeof res.duration === "number"
         ? Math.max(0, Math.round(res.duration / 1000))
         : this.data.recordSeconds;
+      const tempFilePath = res.tempFilePath || "";
 
       this.setRecordState(RECORD_STATUS.DONE, {
         recordSeconds: durationSeconds,
-        tempFilePath: res.tempFilePath || "",
+        tempFilePath,
         recordError: "",
       });
+
+      if (!tempFilePath) {
+        this.setVoiceFlow(VOICE_FLOW_STAGE.ERROR, {
+          errorStep: VOICE_FLOW_STEP.RECORD,
+          message: "录音完成后没有生成音频文件，请重试一次。",
+          error: "录音完成后没有生成音频文件，请重试一次。",
+          busy: false,
+        });
+        return;
+      }
+
+      this.setVoiceFlow(VOICE_FLOW_STAGE.RECORD_FINISHED, {
+        busy: false,
+      });
+      this.startAutoVoiceFlow();
     });
 
     this.recorderManager.onError((error) => {
@@ -340,6 +560,19 @@ Page({
       this.resetUploadState();
       this.resetProcessState();
       this.resetParseState();
+      this.setData({
+        confirmSaving: false,
+      });
+      this.setVoiceFlow(VOICE_FLOW_STAGE.ERROR, {
+        errorStep: VOICE_FLOW_STEP.RECORD,
+        message: error && error.errMsg
+          ? error.errMsg
+          : "录音失败，请检查录音权限和设备状态。",
+        error: error && error.errMsg
+          ? error.errMsg
+          : "录音失败，请检查录音权限和设备状态。",
+        busy: false,
+      });
 
       this.setRecordState(RECORD_STATUS.IDLE, {
         recordSeconds: 0,
@@ -602,6 +835,18 @@ Page({
   },
 
   onStartRecordTap() {
+    if (this.data.voiceFlowBusy || this.data.confirmSaving) {
+      return;
+    }
+
+    if (this.data.parseDrafts.length) {
+      wx.showToast({
+        title: "请先确认或取消当前草稿",
+        icon: "none",
+      });
+      return;
+    }
+
     if (this.data.recordStatus === RECORD_STATUS.RECORDING || this.data.recordStatus === RECORD_STATUS.PAUSED) {
       return;
     }
@@ -640,6 +885,19 @@ Page({
         this.resetUploadState();
         this.resetProcessState();
         this.resetParseState();
+        this.setData({
+          confirmSaving: false,
+        });
+        this.setVoiceFlow(VOICE_FLOW_STAGE.ERROR, {
+          errorStep: VOICE_FLOW_STEP.RECORD,
+          message: error && error.errMsg
+            ? error.errMsg
+            : "录音权限获取失败，请允许使用麦克风。",
+          error: error && error.errMsg
+            ? error.errMsg
+            : "录音权限获取失败，请允许使用麦克风。",
+          busy: false,
+        });
         this.setRecordState(RECORD_STATUS.IDLE, {
           recordSeconds: 0,
           tempFilePath: "",
@@ -690,6 +948,10 @@ Page({
   },
 
   onPlayRecordTap() {
+    if (this.data.voiceFlowBusy) {
+      return;
+    }
+
     if (!this.data.tempFilePath) {
       this.setPlayState(PLAY_STATUS.ERROR, {
         playError: "请先完成录音，再播放录音文件。",
@@ -714,7 +976,89 @@ Page({
     this.stopPlayback();
   },
 
-  onUploadRecordTap() {
+  scrollToDraftResult() {
+    setTimeout(() => {
+      if (typeof wx.pageScrollTo !== "function") {
+        return;
+      }
+
+      wx.pageScrollTo({
+        selector: "#voice-draft-result",
+        duration: 260,
+        fail: () => {},
+      });
+    }, 80);
+  },
+
+  async startAutoVoiceFlow() {
+    if (this.isAutoVoiceProcessing || !this.data.tempFilePath) {
+      return;
+    }
+
+    const flowId = this.autoVoiceFlowId;
+    this.isAutoVoiceProcessing = true;
+
+    try {
+      this.setVoiceFlow(VOICE_FLOW_STAGE.UPLOADING);
+      await this.uploadRecordFile();
+
+      if (flowId !== this.autoVoiceFlowId) {
+        return;
+      }
+
+      this.setVoiceFlow(VOICE_FLOW_STAGE.UPLOADED, {
+        busy: false,
+      });
+      this.setVoiceFlow(VOICE_FLOW_STAGE.TRANSCRIBING);
+      await this.submitProcessRequest();
+
+      if (flowId !== this.autoVoiceFlowId) {
+        return;
+      }
+
+      this.setVoiceFlow(VOICE_FLOW_STAGE.TRANSCRIBED, {
+        busy: false,
+      });
+      this.setVoiceFlow(VOICE_FLOW_STAGE.PARSING);
+      const drafts = await this.parseDraftRequest();
+
+      if (flowId !== this.autoVoiceFlowId) {
+        return;
+      }
+
+      this.setVoiceFlow(VOICE_FLOW_STAGE.PARSED, {
+        message: drafts.length
+          ? "已生成账单草稿，请确认保存。"
+          : VOICE_FLOW_STAGE_MESSAGE[VOICE_FLOW_STAGE.PARSED],
+        busy: false,
+      });
+      this.scrollToDraftResult();
+    } catch (error) {
+      if (flowId !== this.autoVoiceFlowId) {
+        return;
+      }
+
+      const errorMessage = error && error.message
+        ? error.message
+        : "语音处理失败，请重试。";
+      const errorStep = error && error.step
+        ? error.step
+        : VOICE_FLOW_STEP.PARSE;
+
+      this.setVoiceFlow(VOICE_FLOW_STAGE.ERROR, {
+        errorStep,
+        message: errorMessage,
+        error: errorMessage,
+        busy: false,
+      });
+    } finally {
+      if (flowId === this.autoVoiceFlowId) {
+        this.isAutoVoiceProcessing = false;
+      }
+    }
+  },
+
+  async uploadRecordFile() {
     if (!this.data.tempFilePath) {
       const message = "请先完成录音，再上传录音文件。";
       console.error(message);
@@ -722,7 +1066,7 @@ Page({
         uploadFileID: "",
         uploadError: message,
       });
-      return;
+      throw createFlowError(VOICE_FLOW_STEP.UPLOAD, message);
     }
 
     if (!wx.cloud) {
@@ -732,22 +1076,27 @@ Page({
         uploadFileID: "",
         uploadError: message,
       });
-      return;
+      throw createFlowError(VOICE_FLOW_STEP.UPLOAD, message);
     }
 
     const cloudPath = this.buildUploadCloudPath();
 
     this.resetProcessState();
     this.resetParseState();
+    this.setData({
+      confirmSaving: false,
+    });
     this.setUploadState(UPLOAD_STATUS.UPLOADING, {
       uploadFileID: "",
       uploadError: "",
     });
 
-    wx.cloud.uploadFile({
-      cloudPath,
-      filePath: this.data.tempFilePath,
-    }).then((res) => {
+    try {
+      const res = await wx.cloud.uploadFile({
+        cloudPath,
+        filePath: this.data.tempFilePath,
+      });
+
       console.log("record upload success:", res);
 
       this.resetProcessState();
@@ -756,21 +1105,22 @@ Page({
         uploadFileID: res.fileID || "",
         uploadError: "",
       });
-    }).catch((error) => {
+      return res.fileID || "";
+    } catch (error) {
       console.error("record upload failed:", error);
 
+      const message = "录音上传失败，请重试。";
       this.resetProcessState();
       this.resetParseState();
       this.setUploadState(UPLOAD_STATUS.ERROR, {
         uploadFileID: "",
-        uploadError: error && error.errMsg
-          ? error.errMsg
-          : "上传失败，请检查云环境、网络和文件路径。",
+        uploadError: message,
       });
-    });
+      throw createFlowError(VOICE_FLOW_STEP.UPLOAD, message);
+    }
   },
 
-  onSubmitProcessTap() {
+  async submitProcessRequest() {
     if (!this.data.uploadFileID) {
       const message = "请先上传录音文件，再提交云端处理。";
       console.error(message);
@@ -779,7 +1129,7 @@ Page({
         processResult: "",
         processError: message,
       });
-      return;
+      throw createFlowError(VOICE_FLOW_STEP.TRANSCRIBE, message);
     }
 
     if (!wx.cloud) {
@@ -790,7 +1140,7 @@ Page({
         processResult: "",
         processError: message,
       });
-      return;
+      throw createFlowError(VOICE_FLOW_STEP.TRANSCRIBE, message);
     }
 
     this.resetParseState();
@@ -800,24 +1150,27 @@ Page({
       processError: "",
     });
 
-    wx.cloud.callFunction({
-      name: "asrTranscribe",
-      data: {
-        fileID: this.data.uploadFileID,
-        source: "recorder_upload",
-        test: false,
-      },
-    }).then((res) => {
+    try {
+      const res = await wx.cloud.callFunction({
+        name: "asrTranscribe",
+        data: {
+          fileID: this.data.uploadFileID,
+          source: "recorder_upload",
+          test: false,
+        },
+      });
+
       console.log("asrTranscribe process success:", res);
 
       const result = res.result || {};
       if (!result.ok) {
+        const message = result.msg || "语音识别失败，请稍后重试。";
         this.setProcessState(PROCESS_STATUS.ERROR, {
           processTranscript: "",
           processResult: "",
-          processError: result.msg || "云端处理失败。",
+          processError: message,
         });
-        return;
+        throw createFlowError(VOICE_FLOW_STEP.TRANSCRIBE, message);
       }
 
       this.setProcessState(PROCESS_STATUS.SUCCESS, {
@@ -825,20 +1178,25 @@ Page({
         processResult: JSON.stringify(result, null, 2),
         processError: "",
       });
-    }).catch((error) => {
+      return result.transcript || "";
+    } catch (error) {
+      if (error && error.step === VOICE_FLOW_STEP.TRANSCRIBE) {
+        throw error;
+      }
+
       console.error("asrTranscribe process failed:", error);
 
+      const message = "语音识别失败，请稍后重试。";
       this.setProcessState(PROCESS_STATUS.ERROR, {
         processTranscript: "",
         processResult: "",
-        processError: error && error.errMsg
-          ? error.errMsg
-          : "云端处理失败，请检查云函数部署和云环境配置。",
+        processError: message,
       });
-    });
+      throw createFlowError(VOICE_FLOW_STEP.TRANSCRIBE, message);
+    }
   },
 
-  onParseBillDraftTap() {
+  async parseDraftRequest() {
     const transcript = (this.data.processTranscript || "").trim();
     if (!transcript) {
       const message = "请先完成云端处理，拿到 transcript 后再进行 AI 解析。";
@@ -850,7 +1208,7 @@ Page({
         parseMissingFieldsText: "",
         parseError: message,
       });
-      return;
+      throw createFlowError(VOICE_FLOW_STEP.PARSE, message);
     }
 
     if (!wx.cloud) {
@@ -863,7 +1221,7 @@ Page({
         parseMissingFieldsText: "",
         parseError: message,
       });
-      return;
+      throw createFlowError(VOICE_FLOW_STEP.PARSE, message);
     }
 
     this.setParseState(PARSE_STATUS.PROCESSING, {
@@ -874,49 +1232,152 @@ Page({
       parseError: "",
     });
 
-    wx.cloud.callFunction({
-      name: "parseBillDraft",
-      data: {
-        transcript,
-      },
-    }).then((res) => {
+    try {
+      const res = await wx.cloud.callFunction({
+        name: "parseBillDraft",
+        data: {
+          transcript,
+        },
+      });
+
       console.log("parseBillDraft success:", res);
 
       const result = res.result || {};
       if (!result.ok) {
+        let message = "AI 解析失败，请重试。";
+
+        if (result.message === "parse timeout") {
+          message = "AI 解析超时，请重试一次。";
+        } else if (result.message === "no valid drafts parsed") {
+          message = "AI 没有识别出有效账单，请换一种说法重试。";
+        } else if (result.error) {
+          message = result.error;
+        } else if (result.message) {
+          message = result.message;
+        }
+
         this.setParseState(PARSE_STATUS.ERROR, {
           parseMessage: "",
           parseDrafts: [],
           parseMissingFields: [],
           parseMissingFieldsText: "",
-          parseError: result.message || "AI 解析失败。",
+          parseError: message,
         });
-        return;
+        throw createFlowError(VOICE_FLOW_STEP.PARSE, message);
       }
 
       const drafts = Array.isArray(result.drafts) ? result.drafts : [];
       const missingFields = Array.isArray(result.missingFields) ? result.missingFields : [];
 
       this.setParseState(PARSE_STATUS.SUCCESS, {
-        parseMessage: result.message || "解析成功",
+        parseMessage: "已生成账单草稿，请确认保存。",
         parseDrafts: drafts,
         parseMissingFields: missingFields,
         parseMissingFieldsText: missingFields.join("、"),
         parseError: "",
       });
-    }).catch((error) => {
+      return drafts;
+    } catch (error) {
+      if (error && error.step === VOICE_FLOW_STEP.PARSE) {
+        throw error;
+      }
+
       console.error("parseBillDraft failed:", error);
 
+      const message = "AI 解析失败，请重试。";
       this.setParseState(PARSE_STATUS.ERROR, {
         parseMessage: "",
         parseDrafts: [],
         parseMissingFields: [],
         parseMissingFieldsText: "",
-        parseError: error && error.errMsg
-          ? error.errMsg
-          : "AI 解析失败，请检查云函数部署和云环境配置。",
+        parseError: message,
       });
+      throw createFlowError(VOICE_FLOW_STEP.PARSE, message);
+    }
+  },
+
+  async onUploadRecordTap() {
+    if (this.data.voiceFlowBusy || this.data.parseDrafts.length) {
+      return;
+    }
+
+    try {
+      this.setVoiceFlow(VOICE_FLOW_STAGE.UPLOADING);
+      await this.uploadRecordFile();
+      this.setVoiceFlow(VOICE_FLOW_STAGE.UPLOADED, {
+        message: "录音上传完成，可继续进行语音识别。",
+        busy: false,
+      });
+    } catch (error) {
+      console.error("manual upload failed:", error);
+      this.setVoiceFlow(VOICE_FLOW_STAGE.ERROR, {
+        errorStep: error && error.step ? error.step : VOICE_FLOW_STEP.UPLOAD,
+        message: error && error.message ? error.message : "录音上传失败，请重试。",
+        error: error && error.message ? error.message : "录音上传失败，请重试。",
+        busy: false,
+      });
+    }
+  },
+
+  async onSubmitProcessTap() {
+    if (this.data.voiceFlowBusy || this.data.parseDrafts.length) {
+      return;
+    }
+
+    try {
+      this.setVoiceFlow(VOICE_FLOW_STAGE.TRANSCRIBING);
+      await this.submitProcessRequest();
+      this.setVoiceFlow(VOICE_FLOW_STAGE.TRANSCRIBED, {
+        message: "语音识别完成，可继续进行 AI 解析。",
+        busy: false,
+      });
+    } catch (error) {
+      console.error("manual process failed:", error);
+      this.setVoiceFlow(VOICE_FLOW_STAGE.ERROR, {
+        errorStep: error && error.step ? error.step : VOICE_FLOW_STEP.TRANSCRIBE,
+        message: error && error.message ? error.message : "语音识别失败，请稍后重试。",
+        error: error && error.message ? error.message : "语音识别失败，请稍后重试。",
+        busy: false,
+      });
+    }
+  },
+
+  async onParseBillDraftTap() {
+    if (this.data.voiceFlowBusy || this.data.parseDrafts.length) {
+      return;
+    }
+
+    try {
+      this.setVoiceFlow(VOICE_FLOW_STAGE.PARSING);
+      const drafts = await this.parseDraftRequest();
+      this.setVoiceFlow(VOICE_FLOW_STAGE.PARSED, {
+        message: drafts.length
+          ? "已生成账单草稿，请确认保存。"
+          : VOICE_FLOW_STAGE_MESSAGE[VOICE_FLOW_STAGE.PARSED],
+        busy: false,
+      });
+      this.scrollToDraftResult();
+    } catch (error) {
+      console.error("manual parse failed:", error);
+      this.setVoiceFlow(VOICE_FLOW_STAGE.ERROR, {
+        errorStep: error && error.step ? error.step : VOICE_FLOW_STEP.PARSE,
+        message: error && error.message ? error.message : "AI 解析失败，请重试。",
+        error: error && error.message ? error.message : "AI 解析失败，请重试。",
+        busy: false,
+      });
+    }
+  },
+
+  onRetryAutoFlowTap() {
+    if (this.data.voiceFlowBusy || !this.data.tempFilePath) {
+      return;
+    }
+
+    this.setVoiceFlow(VOICE_FLOW_STAGE.RECORD_FINISHED, {
+      message: "准备重新处理这段录音。",
+      busy: false,
     });
+    this.startAutoVoiceFlow();
   },
 
   async onConfirmDraftTap() {
@@ -979,6 +1440,9 @@ Page({
     }
 
     this.isConfirmSaving = true;
+    this.setData({
+      confirmSaving: true,
+    });
     wx.showLoading({
       title: "保存中",
       mask: true,
@@ -996,6 +1460,7 @@ Page({
 
       console.log("confirm bill drafts saved:", savedIds);
       this.resetParseState();
+      this.resetVoiceFlow("已保存账单，可继续记一笔。");
       wx.showToast({
         title: `已保存${savedIds.length}笔`,
         icon: "success",
@@ -1018,12 +1483,16 @@ Page({
       });
     } finally {
       this.isConfirmSaving = false;
+      this.setData({
+        confirmSaving: false,
+      });
       wx.hideLoading();
     }
   },
 
   onCancelDraftTap() {
     this.resetParseState();
+    this.resetVoiceFlow("已取消本次草稿，可重新录音或手动处理。");
     wx.showToast({
       title: "已取消",
       icon: "none",

@@ -43,8 +43,17 @@
         <view class="bill-meta">分类：{{item.category_text}}</view>
         <view class="bill-meta">备注：{{item.note_text}}</view>
         <view class="bill-meta">来源：{{item.source_text}}</view>
+        <view class="bill-meta">记账日期：{{item.date_text}}</view>
         <view class="row bill-footer">
           <view class="muted">{{item.created_at_text}}</view>
+        </view>
+        <view class="bill-action-row">
+          <button class="secondary-btn bill-action-btn" size="mini" disabled="{{removingId === item.id}}" data-id="{{item.id}}" bindtap="onEditTap">
+            编辑
+          </button>
+          <button class="danger-btn bill-action-btn" size="mini" loading="{{removingId === item.id}}" disabled="{{removingId === item.id}}" data-id="{{item.id}}" bindtap="onDeleteTap">
+            删除
+          </button>
         </view>
       </view>
     </block>

@@ -2,6 +2,7 @@
   "pages": [
     "pages/home/index",
     "pages/add/index",
+    "pages/bill-edit/index",
     "pages/stats/index",
     "pages/settings/index"
   ],

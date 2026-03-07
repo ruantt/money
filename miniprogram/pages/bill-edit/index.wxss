@@ -1,0 +1,60 @@
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.time-text {
+  font-size: 24rpx;
+  color: #475569;
+}
+
+.field {
+  margin-bottom: 20rpx;
+}
+
+.label {
+  color: #5b6578;
+  margin-bottom: 10rpx;
+}
+
+.input {
+  background: #f6f8fb;
+  border-radius: 10rpx;
+  height: 72rpx;
+  padding: 0 20rpx;
+}
+
+.type-group {
+  display: flex;
+  gap: 30rpx;
+}
+
+.radio-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.picker-value {
+  color: #1f2d3d;
+  font-weight: 500;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.action-btn {
+  width: calc((100% - 16rpx) / 2);
+  margin-top: 0;
+}
+
+.error-text {
+  color: #c43d31;
+  line-height: 1.6;
+}

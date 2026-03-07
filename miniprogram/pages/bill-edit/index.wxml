@@ -1,0 +1,69 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="card placeholder">
+    账单加载中...
+  </view>
+
+  <view wx:elif="{{loadError}}" class="card">
+    <view class="section-title">编辑账单</view>
+    <view class="error-text">{{loadError}}</view>
+    <button class="primary-btn" bindtap="loadBill">重新加载</button>
+    <button class="secondary-btn" bindtap="onCancelTap">返回账单页</button>
+  </view>
+
+  <block wx:else>
+    <view class="card">
+      <view class="section-title">编辑账单</view>
+      <view class="info-row">
+        <view class="muted">来源</view>
+        <view>{{sourceText}}</view>
+      </view>
+      <view class="info-row">
+        <view class="muted">创建时间</view>
+        <view class="time-text">{{createdAtText}}</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="field">
+        <view class="label">金额</view>
+        <input class="input" type="digit" placeholder="请输入金额" value="{{amount}}" bindinput="onAmountInput" />
+      </view>
+
+      <view class="field">
+        <view class="label">类型</view>
+        <radio-group class="type-group" bindchange="onTypeChange">
+          <label class="radio-item">
+            <radio value="expense" checked="{{type === 'expense'}}" />支出
+          </label>
+          <label class="radio-item">
+            <radio value="income" checked="{{type === 'income'}}" />收入
+          </label>
+        </radio-group>
+      </view>
+
+      <view class="field row">
+        <view class="label">类目</view>
+        <picker mode="selector" range="{{categoryOptions}}" value="{{categoryIndex}}" bindchange="onCategoryChange">
+          <view class="picker-value">{{categoryOptions[categoryIndex]}}</view>
+        </picker>
+      </view>
+
+      <view class="field row">
+        <view class="label">日期</view>
+        <picker mode="date" value="{{date}}" bindchange="onDateChange">
+          <view class="picker-value">{{date}}</view>
+        </picker>
+      </view>
+
+      <view class="field">
+        <view class="label">备注</view>
+        <input class="input" placeholder="可选" value="{{note}}" bindinput="onNoteInput" />
+      </view>
+
+      <view class="button-row">
+        <button class="primary-btn action-btn" loading="{{saving}}" disabled="{{saving}}" bindtap="onSaveTap">保存修改</button>
+        <button class="secondary-btn action-btn" disabled="{{saving}}" bindtap="onCancelTap">取消</button>
+      </view>
+    </view>
+  </block>
+</view>

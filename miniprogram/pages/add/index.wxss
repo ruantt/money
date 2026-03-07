@@ -48,6 +48,87 @@
   color: #c43d31;
 }
 
+.flow-tip {
+  color: #64748b;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.flow-panel {
+  margin-top: 20rpx;
+  padding: 20rpx;
+  border-radius: 12rpx;
+  background: #f8fafc;
+}
+
+.flow-message {
+  color: #1f2d3d;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.flow-step-list {
+  margin-top: 20rpx;
+}
+
+.flow-step-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 14rpx;
+}
+
+.flow-step-row:last-child {
+  margin-bottom: 0;
+}
+
+.flow-step-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #cbd5e1;
+  flex-shrink: 0;
+}
+
+.flow-step-dot-done {
+  background: #16a34a;
+}
+
+.flow-step-dot-active {
+  background: #1a73e8;
+  box-shadow: 0 0 0 8rpx rgba(26, 115, 232, 0.16);
+}
+
+.flow-step-dot-error {
+  background: #c43d31;
+}
+
+.flow-step-label {
+  color: #94a3b8;
+  font-size: 24rpx;
+}
+
+.flow-step-label-done {
+  color: #0f766e;
+}
+
+.flow-step-label-active {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.flow-step-label-error {
+  color: #c43d31;
+  font-weight: 600;
+}
+
+.fallback-title {
+  margin-top: 24rpx;
+  color: #1f2d3d;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
 .result-panel {
   margin-top: 20rpx;
 }

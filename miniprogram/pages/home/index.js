@@ -1,4 +1,9 @@
-const { fetchBillPage, formatMoney, normalizeBillListItem } = require("../../utils/bills");
+const {
+  BILLS_COLLECTION,
+  fetchBillPage,
+  formatMoney,
+  normalizeBillListItem,
+} = require("../../utils/bills");
 
 const PAGE_SIZE = 20;
 
@@ -40,6 +45,7 @@ Page({
     loadingMore: false,
     loadError: "",
     hasMore: true,
+    removingId: "",
   },
 
   onShow() {
@@ -81,6 +87,7 @@ Page({
       loadingMore: false,
       loadError: "",
       hasMore: true,
+      removingId: "",
     });
 
     try {
@@ -103,6 +110,7 @@ Page({
         loadingMore: false,
         loadError: "",
         hasMore: page.hasMore,
+        removingId: "",
       }, () => {
         if (typeof done === "function") {
           done();
@@ -114,6 +122,7 @@ Page({
         loading: false,
         loadingMore: false,
         loadError: "账单加载失败，请稍后下拉重试。",
+        removingId: "",
       }, () => {
         if (typeof done === "function") {
           done();
@@ -167,6 +176,80 @@ Page({
       });
       wx.showToast({
         title: "加载失败",
+        icon: "none",
+      });
+    }
+  },
+
+  onEditTap(e) {
+    const billId = e.currentTarget.dataset.id;
+    if (!billId) {
+      return;
+    }
+
+    wx.navigateTo({
+      url: `/pages/bill-edit/index?id=${billId}`,
+    });
+  },
+
+  onDeleteTap(e) {
+    const billId = e.currentTarget.dataset.id;
+    if (!billId || this.data.removingId) {
+      return;
+    }
+
+    wx.showModal({
+      title: "删除账单",
+      content: "删除后不可恢复，确定继续吗？",
+      success: async (res) => {
+        if (!res.confirm) {
+          return;
+        }
+
+        await this.removeBill(billId);
+      },
+    });
+  },
+
+  async removeBill(billId) {
+    if (!wx.cloud || typeof wx.cloud.database !== "function") {
+      wx.showToast({
+        title: "删除失败",
+        icon: "none",
+      });
+      return;
+    }
+
+    this.setData({
+      removingId: billId,
+    });
+
+    try {
+      const db = wx.cloud.database();
+      await db.collection(BILLS_COLLECTION).doc(billId).remove();
+
+      const transactions = this.data.transactions.filter((item) => item.id !== billId);
+      this.setData({
+        summary: buildSummary(transactions),
+        transactions,
+        removingId: "",
+      });
+
+      wx.showToast({
+        title: "已删除",
+        icon: "success",
+      });
+
+      if (!transactions.length && this.data.hasMore) {
+        this.reload();
+      }
+    } catch (error) {
+      console.error("remove bill failed:", error);
+      this.setData({
+        removingId: "",
+      });
+      wx.showToast({
+        title: "删除失败",
         icon: "none",
       });
     }

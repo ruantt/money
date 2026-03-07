@@ -201,6 +201,32 @@ function buildVoiceBillRecord(db, payload) {
   };
 }
 
+function buildBillUpdateRecord(db, payload) {
+  const amount = Number(payload && payload.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("amount-invalid");
+  }
+
+  const type = payload && payload.type === "income" ? "income" : "expense";
+  const category = normalizeText(
+    payload && payload.category,
+    getDefaultCategoryByType(type)
+  );
+  const note = typeof (payload && payload.note) === "string" ? payload.note.trim() : "";
+  const date = isValidDateString(payload && payload.date)
+    ? payload.date
+    : formatDate(new Date());
+
+  return {
+    amount: Number(amount.toFixed(2)),
+    type,
+    category,
+    note,
+    date,
+    updatedAt: typeof db.serverDate === "function" ? db.serverDate() : new Date(),
+  };
+}
+
 async function fetchBills(db, options) {
   const limitOption = options && typeof options.limit === "number" && options.limit > 0
     ? options.limit
@@ -275,9 +301,11 @@ module.exports = {
   getBillType,
   getBillCategory,
   getBillDate,
+  getSourceText,
   normalizeBillListItem,
   buildManualBillRecord,
   buildVoiceBillRecord,
+  buildBillUpdateRecord,
   fetchBills,
   fetchBillPage,
 };
