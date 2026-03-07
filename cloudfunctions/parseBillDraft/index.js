@@ -3,12 +3,39 @@ const cloud = require("wx-server-sdk");
 
 const ZHIPU_API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
 const ZHIPU_MODEL = "glm-4.7-flash";
-const REQUEST_TIMEOUT_MS = 25000;
-const ALLOWED_CATEGORIES = [
+const REQUEST_TIMEOUT_MS = 50000;
+const MAX_OUTPUT_TOKENS = 1024;
+const EXPENSE_CATEGORIES = [
   "餐饮",
   "交通",
-  "饮品",
-  "其他",
+  "购物",
+  "居家日用",
+  "住房",
+  "通讯网络",
+  "医疗健康",
+  "教育学习",
+  "娱乐休闲",
+  "人情往来",
+  "运动健身",
+];
+const INCOME_CATEGORY = "收入";
+const FALLBACK_CATEGORY = "其他";
+const ALLOWED_CATEGORIES = [...EXPENSE_CATEGORIES, INCOME_CATEGORY, FALLBACK_CATEGORY];
+const ALLOWED_TYPES = ["expense", "income"];
+const CATEGORY_ALIASES = {
+  旅行出行: "娱乐休闲",
+  饮品: "餐饮",
+};
+const INCOME_KEYWORDS = [
+  "工资",
+  "发工资",
+  "收到工资",
+  "奖金",
+  "收入",
+  "收款",
+  "报销到账",
+  "提成",
+  "转账收入",
 ];
 
 cloud.init({
@@ -24,39 +51,108 @@ function isTimeoutError(error) {
   );
 }
 
+function containsIncomeKeyword(text) {
+  const content = typeof text === "string" ? text.trim() : "";
+  if (!content) {
+    return false;
+  }
+
+  return INCOME_KEYWORDS.some((keyword) => content.includes(keyword));
+}
+
+function normalizeCategory(category, type) {
+  if (type === "income") {
+    return INCOME_CATEGORY;
+  }
+
+  if (typeof category !== "string") {
+    return FALLBACK_CATEGORY;
+  }
+
+  const text = category.trim();
+  if (!text) {
+    return FALLBACK_CATEGORY;
+  }
+
+  const mappedCategory = CATEGORY_ALIASES[text] || text;
+  return ALLOWED_CATEGORIES.includes(mappedCategory)
+    ? mappedCategory
+    : FALLBACK_CATEGORY;
+}
+
+function normalizeType(type, category, note, line) {
+  if (ALLOWED_TYPES.includes(type)) {
+    return type;
+  }
+
+  const categoryText = typeof category === "string" ? category : "";
+  const noteText = typeof note === "string" ? note : "";
+  const lineText = typeof line === "string" ? line : "";
+  const incomeHintText = `${categoryText}|${noteText}|${lineText}`;
+
+  if (categoryText === INCOME_CATEGORY || containsIncomeKeyword(incomeHintText)) {
+    return "income";
+  }
+
+  return "expense";
+}
+
+function normalizeNote(note, category, type) {
+  if (typeof note === "string" && note.trim()) {
+    return note.trim();
+  }
+
+  if (type === "income") {
+    return "收入";
+  }
+
+  return category || FALLBACK_CATEGORY;
+}
+
+function buildSystemPrompt() {
+  return [
+    "你是中文记账抽取器，只做结构化提取。",
+    "输出必须是 JSON 对象：{\"drafts\":[{\"amount\":数字,\"type\":\"expense|income\",\"category\":\"分类\",\"note\":\"备注\"}]}。",
+    "没有可提取账单时返回 {\"drafts\":[]}。",
+    `支出分类仅限：${EXPENSE_CATEGORIES.join("、")}。`,
+    `收入固定为 type=income，category=${INCOME_CATEGORY}。`,
+    `无法归类的支出分类写 ${FALLBACK_CATEGORY}。`,
+    "工资、奖金、收款、报销到账、提成、转账收入等识别为收入。",
+    "一句话包含多笔账单时拆成多个 drafts 项。",
+    "不要输出任何 JSON 之外的内容。",
+  ].join("\n");
+}
+
+function buildUserPrompt(transcript) {
+  return [
+    "从 transcript 中提取所有明确提到的账单。",
+    "只提取金额明确的项目。",
+    "note 只保留最短必要说明。",
+    "transcript:",
+    transcript,
+  ].join("\n");
+}
+
 function callZhipuApi(apiKey, transcript) {
   return new Promise((resolve, reject) => {
     const requestBody = JSON.stringify({
       model: ZHIPU_MODEL,
-      temperature: 0.1,
+      thinking: {
+        type: "disabled",
+      },
+      do_sample: false,
+      max_tokens: MAX_OUTPUT_TOKENS,
+      response_format: {
+        type: "json_object",
+      },
       messages: [
         {
           role: "system",
-          content: [
-            "你是中文记账提取助手。",
-            "只返回多行纯文本。",
-            "不要 JSON，不要 markdown，不要解释。",
-            "每行固定格式：金额|分类|备注。",
-            `分类只能是：${ALLOWED_CATEGORIES.join("、")}。`,
-          ].join("\n"),
+          content: buildSystemPrompt(),
         },
         {
           role: "user",
-          content: [
-            "请从下面 transcript 中提取所有明确提到的账单。",
-            "一行代表一笔账单。",
-            "如果有多笔账单，就输出多行。",
-            "如果没有可提取的账单，请返回空字符串。",
-            "不要输出任何额外说明。",
-            "每行格式固定为：金额|分类|备注",
-            `分类只能是：${ALLOWED_CATEGORIES.join("、")}`,
-            "示例：",
-            "20|餐饮|早上吃饭",
-            "20|交通|打车",
-            "20|饮品|咖啡",
-            "transcript:",
-            transcript,
-          ].join("\n"),
+          content: buildUserPrompt(transcript),
         },
       ],
     });
@@ -158,40 +254,91 @@ function parseReplyLine(line) {
     .split("|")
     .map((item) => item.trim());
 
-  if (parts.length !== 3) {
+  if (parts.length !== 4 && parts.length !== 3) {
     return null;
   }
 
-  const amount = Number(parts[0]);
-  if (!Number.isFinite(amount)) {
+  const rawType = parts.length === 4 ? parts[1] : "";
+  const rawCategory = parts.length === 4 ? parts[2] : parts[1];
+  const rawNote = parts.length === 4 ? parts[3] : parts[2];
+  return buildDraft(parts[0], rawType, rawCategory, rawNote, line);
+}
+
+function buildDraft(amountValue, rawType, rawCategory, rawNote, context) {
+  const amount = Number(amountValue);
+  if (!Number.isFinite(amount) || amount <= 0) {
     return null;
   }
 
-  const category = parts[1];
-  if (!ALLOWED_CATEGORIES.includes(category)) {
-    return null;
-  }
-
-  const note = parts[2];
-
-  if (!note) {
-    return null;
-  }
+  const type = normalizeType(rawType, rawCategory, rawNote, context);
+  const category = normalizeCategory(rawCategory, type);
+  const note = normalizeNote(rawNote, category, type);
 
   return {
-    amount,
+    amount: Number(amount.toFixed(2)),
+    type,
     category,
     note,
   };
 }
 
-function parseReply(rawReply) {
+function parseJsonReply(rawReply) {
+  const content = String(rawReply || "").trim();
+  if (!content || (content[0] !== "{" && content[0] !== "[")) {
+    return null;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (error) {
+    return null;
+  }
+
+  let items = null;
+  if (Array.isArray(parsed)) {
+    items = parsed;
+  } else if (parsed && Array.isArray(parsed.drafts)) {
+    items = parsed.drafts;
+  }
+
+  if (!items) {
+    return null;
+  }
+
+  return items
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      return buildDraft(
+        item.amount,
+        item.type,
+        item.category,
+        item.note,
+        JSON.stringify(item)
+      );
+    })
+    .filter(Boolean);
+}
+
+function parseTextReply(rawReply) {
   return String(rawReply || "")
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => parseReplyLine(line))
     .filter(Boolean);
+}
+
+function parseReply(rawReply) {
+  const jsonDrafts = parseJsonReply(rawReply);
+  if (jsonDrafts !== null) {
+    return jsonDrafts;
+  }
+
+  return parseTextReply(rawReply);
 }
 
 exports.main = async (event) => {

@@ -10,6 +10,11 @@
   color: #475569;
 }
 
+.draft-tip {
+  color: #475569;
+  line-height: 1.7;
+}
+
 .field {
   margin-bottom: 20rpx;
 }

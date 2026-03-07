@@ -9,11 +9,32 @@ const {
   getSourceText,
 } = require("../../utils/bills");
 
+const EDIT_MODE = {
+  BILL: "bill",
+  DRAFT: "draft",
+};
+
 function today() {
   const now = new Date();
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function isValidDateString(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+  return !Number.isNaN(date.getTime()) && todayFromDate(date) === value;
+}
+
+function todayFromDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 
@@ -46,9 +67,47 @@ function formatAmountInputValue(value) {
   return String(Number(amount.toFixed(2)));
 }
 
+function buildEditableFormState(categoryOptions, payload) {
+  const type = payload && payload.type === "income" ? "income" : "expense";
+  const category = typeof (payload && payload.category) === "string" && categoryOptions.includes(payload.category)
+    ? payload.category
+    : getDefaultCategoryByType(type);
+
+  return {
+    type,
+    amount: formatAmountInputValue(payload && payload.amount),
+    ...buildCategorySelectionData(
+      categoryOptions,
+      findCategoryIndex(categoryOptions, category)
+    ),
+    date: isValidDateString(payload && payload.date) ? payload.date : today(),
+    note: typeof (payload && payload.note) === "string" ? payload.note : "",
+  };
+}
+
+function parseDraftIndex(value) {
+  const draftIndex = Number(value);
+  return Number.isInteger(draftIndex) && draftIndex >= 0 ? draftIndex : -1;
+}
+
+function parseDraftPayload(value) {
+  if (typeof value !== "string" || !value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(decodeURIComponent(value));
+  } catch (error) {
+    console.error("parse draft payload failed:", error);
+    return null;
+  }
+}
+
 Page({
   data: {
+    mode: EDIT_MODE.BILL,
     billId: "",
+    draftIndex: -1,
     categoryOptions: ALL_CATEGORIES,
     type: "expense",
     amount: "",
@@ -65,6 +124,13 @@ Page({
   },
 
   onLoad(options) {
+    this.loadOptions = options || {};
+
+    if (options && options.mode === EDIT_MODE.DRAFT) {
+      this.loadDraft(options);
+      return;
+    }
+
     const billId = options && options.id ? options.id : "";
 
     if (!billId) {
@@ -76,9 +142,43 @@ Page({
     }
 
     this.setData({
+      mode: EDIT_MODE.BILL,
       billId,
     });
     this.loadBill();
+  },
+
+  onRetryLoadTap() {
+    if (this.data.mode === EDIT_MODE.DRAFT) {
+      this.loadDraft(this.loadOptions || {});
+      return;
+    }
+
+    this.loadBill();
+  },
+
+  loadDraft(options) {
+    const draft = parseDraftPayload(options && options.draft);
+
+    if (!draft) {
+      this.setData({
+        mode: EDIT_MODE.DRAFT,
+        loading: false,
+        loadError: "草稿读取失败，请返回重试。",
+      });
+      return;
+    }
+
+    this.setData({
+      mode: EDIT_MODE.DRAFT,
+      billId: "",
+      draftIndex: parseDraftIndex(options && options.draftIndex),
+      ...buildEditableFormState(this.data.categoryOptions, draft),
+      sourceText: "语音草稿",
+      createdAtText: "",
+      loading: false,
+      loadError: "",
+    });
   },
 
   async loadBill() {
@@ -99,18 +199,15 @@ Page({
       const db = wx.cloud.database();
       const res = await db.collection(BILLS_COLLECTION).doc(this.data.billId).get();
       const bill = res && res.data ? res.data : {};
-      const type = getBillType(bill);
-      const category = getBillCategory(bill);
 
       this.setData({
-        type,
-        amount: formatAmountInputValue(bill.amount),
-        ...buildCategorySelectionData(
-          this.data.categoryOptions,
-          findCategoryIndex(this.data.categoryOptions, category)
-        ),
-        date: getBillDate(bill) || today(),
-        note: typeof bill.note === "string" ? bill.note : "",
+        ...buildEditableFormState(this.data.categoryOptions, {
+          type: getBillType(bill),
+          amount: bill.amount,
+          category: getBillCategory(bill),
+          date: getBillDate(bill) || today(),
+          note: typeof bill.note === "string" ? bill.note : "",
+        }),
         sourceText: getSourceText(bill.source),
         createdAtText: formatDateTime(bill.createdAt || bill.created_at || bill._createTime),
         loading: false,
@@ -162,6 +259,32 @@ Page({
     });
   },
 
+  buildDraftPayload() {
+    const amountNumber = Number(this.data.amount);
+    const category = this.data.categoryOptions[this.data.categoryIndex] || getDefaultCategoryByType(this.data.type);
+
+    return {
+      amount: Number(amountNumber.toFixed(2)),
+      type: this.data.type,
+      category,
+      date: this.data.date,
+      note: typeof this.data.note === "string" ? this.data.note.trim() : "",
+    };
+  },
+
+  navigateBackByMode() {
+    wx.navigateBack({
+      delta: 1,
+      fail: () => {
+        wx.switchTab({
+          url: this.data.mode === EDIT_MODE.DRAFT
+            ? "/pages/add/index"
+            : "/pages/home/index",
+        });
+      },
+    });
+  },
+
   async onSaveTap() {
     if (this.data.saving) {
       return;
@@ -173,6 +296,50 @@ Page({
         title: "请输入正确金额",
         icon: "none",
       });
+      return;
+    }
+
+    if (this.data.mode === EDIT_MODE.DRAFT) {
+      this.setData({
+        saving: true,
+      });
+      wx.showLoading({
+        title: "保存中",
+        mask: true,
+      });
+
+      try {
+        const eventChannel = this.getOpenerEventChannel();
+        if (!eventChannel || typeof eventChannel.emit !== "function") {
+          throw new Error("draft return channel unavailable");
+        }
+
+        eventChannel.emit("draftSaved", {
+          draftIndex: this.data.draftIndex,
+          draft: this.buildDraftPayload(),
+        });
+
+        wx.showToast({
+          title: "已保存修改",
+          icon: "success",
+        });
+
+        setTimeout(() => {
+          this.navigateBackByMode();
+        }, 250);
+      } catch (error) {
+        console.error("save draft failed:", error);
+        wx.showToast({
+          title: "保存失败",
+          icon: "none",
+        });
+      } finally {
+        this.setData({
+          saving: false,
+        });
+        wx.hideLoading();
+      }
+
       return;
     }
 
@@ -224,14 +391,7 @@ Page({
       });
 
       setTimeout(() => {
-        wx.navigateBack({
-          delta: 1,
-          fail: () => {
-            wx.switchTab({
-              url: "/pages/home/index",
-            });
-          },
-        });
+        this.navigateBackByMode();
       }, 350);
     } catch (error) {
       console.error("update bill failed:", error);
@@ -248,13 +408,6 @@ Page({
   },
 
   onCancelTap() {
-    wx.navigateBack({
-      delta: 1,
-      fail: () => {
-        wx.switchTab({
-          url: "/pages/home/index",
-        });
-      },
-    });
+    this.navigateBackByMode();
   },
 });

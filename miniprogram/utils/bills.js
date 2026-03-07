@@ -204,7 +204,11 @@ function buildVoiceBillRecord(db, payload) {
     return null;
   }
 
-  const category = normalizeCategoryName(payload && payload.category);
+  const type = payload && payload.type === "income" ? "income" : "expense";
+  const category = normalizeCategoryForStorage(
+    payload && payload.category,
+    type
+  );
   const note = typeof (payload && payload.note) === "string" ? payload.note.trim() : "";
   const transcript = typeof (payload && payload.transcript) === "string" ? payload.transcript.trim() : "";
   const date = isValidDateString(payload && payload.date)
@@ -219,7 +223,7 @@ function buildVoiceBillRecord(db, payload) {
     transcript,
     createdAt: typeof db.serverDate === "function" ? db.serverDate() : new Date(),
     updatedAt: typeof db.serverDate === "function" ? db.serverDate() : new Date(),
-    type: "expense",
+    type,
     date,
   };
 }

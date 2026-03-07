@@ -1,6 +1,6 @@
 page {
-  background: #f5f6f8;
-  color: #1f2d3d;
+  background: #f4f7fb;
+  color: #162033;
   font-size: 28rpx;
 }
 
@@ -11,10 +11,11 @@ page {
 
 .card {
   background: #ffffff;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  margin-bottom: 20rpx;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
   box-sizing: border-box;
+  box-shadow: 0 12rpx 30rpx -24rpx rgba(15, 23, 42, 0.25);
 }
 
 .section-title {
@@ -34,35 +35,35 @@ page {
 }
 
 .amount-expense {
-  color: #e6513d;
+  color: #d46a6a;
 }
 
 .amount-income {
-  color: #13a45f;
+  color: #2f9e74;
 }
 
 .primary-btn {
   margin-top: 20rpx;
-  background: #1a73e8;
+  background: #4f7cff;
   color: #ffffff;
   border: none;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
 }
 
 .secondary-btn {
   margin-top: 16rpx;
-  background: #eef3ff;
-  color: #1a73e8;
+  background: #eef4ff;
+  color: #4f7cff;
   border: none;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
 }
 
 .danger-btn {
   margin-top: 16rpx;
-  background: #ffeceb;
-  color: #c43d31;
+  background: #fdf0f0;
+  color: #d46a6a;
   border: none;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
 }
 
 .placeholder {

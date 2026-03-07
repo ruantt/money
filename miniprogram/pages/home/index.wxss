@@ -1,5 +1,7 @@
 .month-hero {
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+  box-shadow: 0 20rpx 48rpx -24rpx rgba(79, 124, 255, 0.26);
 }
 
 .month-hero-top {
@@ -26,15 +28,15 @@
 
 .month-picker-text {
   margin-top: 8rpx;
-  color: #1a73e8;
+  color: #4f7cff;
   font-size: 24rpx;
 }
 
 .month-reset {
   padding: 10rpx 18rpx;
   border-radius: 999rpx;
-  background: #eef3ff;
-  color: #1a73e8;
+  background: rgba(79, 124, 255, 0.12);
+  color: #4f7cff;
   font-size: 24rpx;
   flex-shrink: 0;
 }
@@ -48,8 +50,8 @@
 
 .month-summary-item {
   padding: 18rpx 20rpx;
-  border-radius: 14rpx;
-  background: rgba(255, 255, 255, 0.92);
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .month-summary-label {
@@ -64,8 +66,8 @@
 }
 
 .day-card {
-  padding-top: 20rpx;
-  padding-bottom: 12rpx;
+  padding-top: 24rpx;
+  padding-bottom: 18rpx;
 }
 
 .day-header {
@@ -98,16 +100,8 @@
   line-height: 1.6;
 }
 
-.day-total-expense {
-  color: #e6513d;
-}
-
-.day-total-income {
-  color: #13a45f;
-}
-
 .day-list {
-  margin-top: 8rpx;
+  margin-top: 12rpx;
 }
 
 .bill-row {
@@ -115,8 +109,11 @@
   justify-content: space-between;
   align-items: center;
   gap: 20rpx;
-  padding: 18rpx 0;
-  border-top: 1rpx solid #eef2f7;
+  padding: 22rpx 0;
+}
+
+.bill-row + .bill-row {
+  margin-top: 6rpx;
 }
 
 .bill-main {
@@ -144,7 +141,7 @@
 .bill-type {
   padding: 4rpx 12rpx;
   border-radius: 999rpx;
-  background: #f1f5f9;
+  background: #f4f6fb;
   color: #64748b;
   font-size: 20rpx;
 }
@@ -178,7 +175,7 @@
 }
 
 .bill-more {
-  color: #1a73e8;
+  color: #4f7cff;
   font-size: 22rpx;
 }
 
@@ -211,5 +208,5 @@
 }
 
 .error-card {
-  color: #c43d31;
+  color: #d46a6a;
 }

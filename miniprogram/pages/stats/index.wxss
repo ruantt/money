@@ -1,3 +1,9 @@
+.stats-hero-card {
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+  box-shadow: 0 20rpx 48rpx -24rpx rgba(79, 124, 255, 0.26);
+}
+
 .filter-row {
   display: flex;
   flex-wrap: wrap;
@@ -6,44 +12,118 @@
 }
 
 .filter-chip {
-  padding: 10rpx 20rpx;
+  padding: 12rpx 22rpx;
   border-radius: 999rpx;
-  background: #f1f5f9;
-  color: #475569;
+  background: rgba(255, 255, 255, 0.82);
+  color: #5c6880;
   font-size: 24rpx;
 }
 
 .filter-chip-active {
-  background: #1d4ed8;
+  background: #4f7cff;
   color: #ffffff;
+  box-shadow: 0 12rpx 24rpx -18rpx rgba(79, 124, 255, 0.78);
 }
 
 .month-picker {
   margin-top: 20rpx;
-  padding: 20rpx;
-  border-radius: 12rpx;
-  background: #f8fafc;
+  padding: 22rpx 24rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.82);
   color: #334155;
 }
 
 .range-text {
-  margin-top: 16rpx;
-  color: #64748b;
+  margin-top: 18rpx;
+  color: #6f7b90;
   font-size: 24rpx;
 }
 
-.stat-line {
-  padding: 8rpx 0;
+.stats-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  margin-top: 24rpx;
 }
 
-.top-item {
-  padding: 12rpx 0;
-  border-bottom: 1rpx solid #edf0f5;
+.stats-kpi {
+  padding: 20rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.stats-kpi-label {
+  color: #7b879b;
+  font-size: 22rpx;
+}
+
+.stats-kpi-value {
+  margin-top: 10rpx;
+  color: #162033;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.chart-card {
+  padding-bottom: 18rpx;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
   gap: 20rpx;
 }
 
-.top-item:last-child {
-  border-bottom: none;
+.section-title-compact {
+  margin-bottom: 0;
+}
+
+.chart-subtitle {
+  color: #7b879b;
+  font-size: 22rpx;
+  flex-shrink: 0;
+}
+
+.chart-shell {
+  margin-top: 22rpx;
+}
+
+.chart-canvas {
+  width: 100%;
+  display: block;
+}
+
+.trend-chart {
+  height: 360rpx;
+}
+
+.donut-shell {
+  margin-top: 8rpx;
+}
+
+.donut-chart {
+  height: 420rpx;
+}
+
+.chart-empty {
+  padding: 84rpx 0;
+}
+
+.donut-helper {
+  margin-top: 6rpx;
+  color: #8a94a6;
+  font-size: 22rpx;
+  text-align: center;
+}
+
+.top-item {
+  padding: 18rpx 0;
+  gap: 20rpx;
+}
+
+.top-item + .top-item {
+  margin-top: 6rpx;
 }
 
 .top-item-category {
@@ -60,7 +140,7 @@
 
 .top-item-value {
   flex-shrink: 0;
-  color: #334155;
+  font-weight: 600;
 }
 
 .stats-empty-image {
@@ -71,5 +151,5 @@
 }
 
 .error-card {
-  color: #c43d31;
+  color: #d46a6a;
 }

@@ -1,4 +1,7 @@
 {
   "navigationBarTitleText": "统计",
-  "enablePullDownRefresh": true
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "ec-canvas": "../../components/ec-canvas/ec-canvas"
+  }
 }

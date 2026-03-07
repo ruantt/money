@@ -1,26 +1,33 @@
 <view class="page">
   <view wx:if="{{loading}}" class="card placeholder">
-    账单加载中...
+    {{mode === 'draft' ? '草稿加载中...' : '账单加载中...'}}
   </view>
 
   <view wx:elif="{{loadError}}" class="card">
-    <view class="section-title">编辑账单</view>
+    <view class="section-title">{{mode === 'draft' ? '修改信息' : '编辑账单'}}</view>
     <view class="error-text">{{loadError}}</view>
-    <button class="primary-btn" bindtap="loadBill">重新加载</button>
-    <button class="secondary-btn" bindtap="onCancelTap">返回账单页</button>
+    <button class="primary-btn" bindtap="onRetryLoadTap">重新加载</button>
+    <button class="secondary-btn" bindtap="onCancelTap">{{mode === 'draft' ? '返回草稿' : '返回账单页'}}</button>
   </view>
 
   <block wx:else>
     <view class="card">
-      <view class="section-title">编辑账单</view>
-      <view class="info-row">
-        <view class="muted">来源</view>
-        <view>{{sourceText}}</view>
+      <view class="section-title">{{mode === 'draft' ? '修改信息' : '编辑账单'}}</view>
+
+      <view wx:if="{{mode === 'draft'}}" class="draft-tip">
+        修改完成后返回草稿列表，确认添加后才会真正写入账单。
       </view>
-      <view class="info-row">
-        <view class="muted">创建时间</view>
-        <view class="time-text">{{createdAtText}}</view>
-      </view>
+
+      <block wx:else>
+        <view class="info-row">
+          <view class="muted">来源</view>
+          <view>{{sourceText}}</view>
+        </view>
+        <view class="info-row">
+          <view class="muted">创建时间</view>
+          <view class="time-text">{{createdAtText}}</view>
+        </view>
+      </block>
     </view>
 
     <view class="card">
@@ -65,7 +72,7 @@
 
       <view class="button-row">
         <button class="primary-btn action-btn" loading="{{saving}}" disabled="{{saving}}" bindtap="onSaveTap">保存修改</button>
-        <button class="secondary-btn action-btn" disabled="{{saving}}" bindtap="onCancelTap">取消</button>
+        <button class="secondary-btn action-btn" disabled="{{saving}}" bindtap="onCancelTap">{{mode === 'draft' ? '返回草稿' : '取消'}}</button>
       </view>
     </view>
   </block>

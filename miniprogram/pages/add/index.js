@@ -1,4 +1,9 @@
-const { ALL_CATEGORIES, getCategoryDisplay, getDefaultCategoryByType } = require("../../utils/constants");
+const {
+  ALL_CATEGORIES,
+  getCategoryDisplay,
+  getDefaultCategoryByType,
+  normalizeCategoryForStorage,
+} = require("../../utils/constants");
 const { BILLS_COLLECTION, buildManualBillRecord, buildVoiceBillRecord } = require("../../utils/bills");
 
 const RECORD_STATUS = {
@@ -124,7 +129,7 @@ const VOICE_FLOW_STAGE_MESSAGE = {
   [VOICE_FLOW_STAGE.TRANSCRIBING]: "正在识别你说的话。",
   [VOICE_FLOW_STAGE.TRANSCRIBED]: "语音识别完成，准备进行 AI 解析。",
   [VOICE_FLOW_STAGE.PARSING]: "AI 正在整理账单内容。",
-  [VOICE_FLOW_STAGE.PARSED]: "已生成账单草稿，请确认保存。",
+  [VOICE_FLOW_STAGE.PARSED]: "已生成账单草稿，请确认添加或修改信息。",
   [VOICE_FLOW_STAGE.ERROR]: "处理失败，请重试。",
 };
 
@@ -229,6 +234,22 @@ function today() {
   return `${y}-${m}-${d}`;
 }
 
+function isValidDateString(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+  return !Number.isNaN(date.getTime()) && todayFromDate(date) === value;
+}
+
+function todayFromDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function padNumber(value) {
   return String(value).padStart(2, "0");
 }
@@ -281,24 +302,44 @@ function getManualFormDefaultData() {
   };
 }
 
+function getTypeText(type) {
+  return type === "income" ? "收入" : "支出";
+}
+
+function normalizeVoiceDraft(draft) {
+  const type = draft && draft.type === "income" ? "income" : "expense";
+  const amountValue = Number(draft && draft.amount);
+  const normalizedAmount = Number.isFinite(amountValue) && amountValue > 0
+    ? Number(amountValue.toFixed(2))
+    : "";
+  const category = normalizeCategoryForStorage(draft && draft.category, type);
+  const date = isValidDateString(draft && draft.date) ? draft.date : today();
+  const note = typeof (draft && draft.note) === "string" ? draft.note.trim() : "";
+  const categoryDisplay = getCategoryDisplay(category);
+
+  return {
+    amount: normalizedAmount,
+    type,
+    typeText: getTypeText(type),
+    category,
+    categoryIcon: categoryDisplay.icon,
+    date,
+    note,
+  };
+}
+
 function normalizeDraftsForDisplay(drafts) {
-  return (Array.isArray(drafts) ? drafts : []).map((draft) => {
-    const categoryDisplay = getCategoryDisplay(draft && draft.category);
-    return {
-      ...draft,
-      category: categoryDisplay.name,
-      categoryIcon: categoryDisplay.icon,
-    };
-  });
+  return (Array.isArray(drafts) ? drafts : []).map((draft) => normalizeVoiceDraft(draft));
 }
 
 function buildBillRecord(db, draft, transcript) {
   return buildVoiceBillRecord(db, {
     amount: draft && draft.amount,
+    type: draft && draft.type,
     category: draft && draft.category,
+    date: draft && draft.date,
     note: draft && draft.note,
     transcript,
-    date: today(),
   });
 }
 
@@ -337,6 +378,7 @@ Page({
     parseStatusText: PARSE_STATUS_TEXT[PARSE_STATUS.IDLE],
     parseMessage: "",
     parseDrafts: [],
+    draftEditMode: false,
     parseMissingFields: [],
     parseMissingFieldsText: "",
     parseError: "",
@@ -472,10 +514,34 @@ Page({
     this.setParseState(PARSE_STATUS.IDLE, {
       parseMessage: "",
       parseDrafts: [],
+      draftEditMode: false,
       parseMissingFields: [],
       parseMissingFieldsText: "",
       parseError: "",
     });
+  },
+
+  resetCurrentVoiceSession(message) {
+    this.autoVoiceFlowId += 1;
+    this.isAutoVoiceProcessing = false;
+    this.isConfirmSaving = false;
+
+    this.clearRecordTimer();
+    this.resetRecordProgress();
+    this.stopPlayback();
+    this.resetPlayState();
+    this.resetUploadState();
+    this.resetProcessState();
+    this.resetParseState();
+    this.setData({
+      confirmSaving: false,
+    });
+    this.setRecordState(RECORD_STATUS.IDLE, {
+      recordSeconds: 0,
+      tempFilePath: "",
+      recordError: "",
+    });
+    this.resetVoiceFlow(message || VOICE_FLOW_STAGE_MESSAGE[VOICE_FLOW_STAGE.IDLE]);
   },
 
   initRecorder() {
@@ -1058,7 +1124,7 @@ Page({
 
       this.setVoiceFlow(VOICE_FLOW_STAGE.PARSED, {
         message: drafts.length
-          ? "已生成账单草稿，请确认保存。"
+          ? "已生成账单草稿，请确认添加或修改信息。"
           : VOICE_FLOW_STAGE_MESSAGE[VOICE_FLOW_STAGE.PARSED],
         busy: false,
       });
@@ -1300,8 +1366,9 @@ Page({
       const missingFields = Array.isArray(result.missingFields) ? result.missingFields : [];
 
       this.setParseState(PARSE_STATUS.SUCCESS, {
-        parseMessage: "已生成账单草稿，请确认保存。",
+        parseMessage: "已生成账单草稿，请确认添加或修改信息。",
         parseDrafts: normalizeDraftsForDisplay(drafts),
+        draftEditMode: false,
         parseMissingFields: missingFields,
         parseMissingFieldsText: missingFields.join("、"),
         parseError: "",
@@ -1382,7 +1449,7 @@ Page({
       const drafts = await this.parseDraftRequest();
       this.setVoiceFlow(VOICE_FLOW_STAGE.PARSED, {
         message: drafts.length
-          ? "已生成账单草稿，请确认保存。"
+          ? "已生成账单草稿，请确认添加或修改信息。"
           : VOICE_FLOW_STAGE_MESSAGE[VOICE_FLOW_STAGE.PARSED],
         busy: false,
       });
@@ -1415,36 +1482,94 @@ Page({
       return;
     }
 
-    this.autoVoiceFlowId += 1;
-    this.isAutoVoiceProcessing = false;
-    this.clearRecordTimer();
-    this.resetRecordProgress();
-    this.stopPlayback();
-    this.resetPlayState();
-    this.resetUploadState();
-    this.resetProcessState();
-    this.resetParseState();
-    this.setData({
-      confirmSaving: false,
-    });
-    this.setRecordState(RECORD_STATUS.IDLE, {
-      recordSeconds: 0,
-      tempFilePath: "",
-      recordError: "",
-    });
-    this.resetVoiceFlow("准备好后重新录一段语音。");
+    this.resetCurrentVoiceSession("准备好后重新录一段语音。");
   },
 
-  onBackToEditTap() {
+  onModifyDraftTap() {
+    if (this.data.voiceFlowBusy || this.data.confirmSaving || !this.data.parseDrafts.length) {
+      return;
+    }
+
+    if (this.data.parseDrafts.length === 1) {
+      this.openDraftEditor(0);
+      return;
+    }
+
+    this.setData({
+      draftEditMode: true,
+    });
+  },
+
+  onBackToDraftTap() {
     if (this.data.voiceFlowBusy || this.data.confirmSaving) {
       return;
     }
 
-    this.resetParseState();
-    this.resetVoiceFlow("已返回修改，你可以重新录音或改用手动记账。");
-    wx.showToast({
-      title: "已返回修改",
-      icon: "none",
+    this.setData({
+      draftEditMode: false,
+    });
+  },
+
+  onEditDraftTap(e) {
+    const draftIndex = Number(e.currentTarget.dataset.index);
+    this.openDraftEditor(draftIndex);
+  },
+
+  openDraftEditor(draftIndex) {
+    if (
+      this.data.voiceFlowBusy
+      || this.data.confirmSaving
+      || !Number.isInteger(draftIndex)
+      || draftIndex < 0
+      || draftIndex >= this.data.parseDrafts.length
+    ) {
+      return;
+    }
+
+    const draft = this.data.parseDrafts[draftIndex];
+    const draftPayload = encodeURIComponent(JSON.stringify({
+      amount: draft.amount,
+      type: draft.type,
+      category: draft.category,
+      date: draft.date,
+      note: draft.note,
+    }));
+
+    wx.navigateTo({
+      url: `/pages/bill-edit/index?mode=draft&draftIndex=${draftIndex}&draft=${draftPayload}`,
+      events: {
+        draftSaved: (detail) => {
+          this.onDraftSaved(detail);
+        },
+      },
+      fail: (error) => {
+        console.error("open draft editor failed:", error);
+        wx.showToast({
+          title: "打开修改页失败",
+          icon: "none",
+        });
+      },
+    });
+  },
+
+  onDraftSaved(detail) {
+    const draftIndex = Number(detail && detail.draftIndex);
+    if (
+      !Number.isInteger(draftIndex)
+      || draftIndex < 0
+      || draftIndex >= this.data.parseDrafts.length
+      || !detail
+      || !detail.draft
+    ) {
+      return;
+    }
+
+    const nextDrafts = this.data.parseDrafts.slice();
+    nextDrafts[draftIndex] = normalizeVoiceDraft(detail.draft);
+
+    this.setData({
+      parseDrafts: nextDrafts,
+      draftEditMode: this.data.draftEditMode && nextDrafts.length > 1,
     });
   },
 
@@ -1527,8 +1652,7 @@ Page({
       }
 
       console.log("confirm bill drafts saved:", savedIds);
-      this.resetParseState();
-      this.resetVoiceFlow("已保存账单，可继续记一笔。");
+      this.resetCurrentVoiceSession("已保存账单，可继续记一笔。");
       wx.showToast({
         title: `已保存${savedIds.length}笔`,
         icon: "success",
@@ -1559,8 +1683,11 @@ Page({
   },
 
   onCancelDraftTap() {
-    this.resetParseState();
-    this.resetVoiceFlow("已取消本次草稿，可重新录音或手动处理。");
+    if (this.data.voiceFlowBusy || this.data.confirmSaving) {
+      return;
+    }
+
+    this.resetCurrentVoiceSession("已取消本次语音记账，可重新开始。");
     wx.showToast({
       title: "已取消",
       icon: "none",

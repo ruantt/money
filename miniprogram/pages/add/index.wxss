@@ -37,6 +37,10 @@
   margin-top: 0;
 }
 
+.action-btn-third {
+  width: calc((100% - 32rpx) / 3);
+}
+
 .cloud-result {
   margin-top: 20rpx;
   padding: 20rpx;
@@ -48,14 +52,176 @@
 }
 
 .cloud-result-error {
-  background: #ffeceb;
-  color: #c43d31;
+  background: #fdf0f0;
+  color: #d46a6a;
 }
 
 .flow-tip {
   color: #64748b;
   font-size: 24rpx;
   line-height: 1.7;
+}
+
+.record-visual-panel {
+  margin-top: 24rpx;
+  padding: 28rpx 24rpx 24rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+  overflow: hidden;
+}
+
+.record-ripple-shell {
+  position: relative;
+  height: 160rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.record-ripple {
+  position: absolute;
+  width: 92rpx;
+  height: 92rpx;
+  border-radius: 50%;
+  background: rgba(79, 124, 255, 0.14);
+  opacity: 0;
+  transform: scale(0.65);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.record-ripple-shell-active .record-ripple {
+  animation: rippleSpread 2.6s ease-out infinite;
+}
+
+.record-ripple-shell-paused .record-ripple {
+  opacity: 0.22;
+  transform: scale(1.05);
+}
+
+.record-ripple-one {
+  animation-delay: 0s;
+}
+
+.record-ripple-two {
+  animation-delay: 0.8s;
+}
+
+.record-ripple-three {
+  animation-delay: 1.6s;
+}
+
+.record-wave {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 10rpx;
+  height: 78rpx;
+}
+
+.record-wave-bar {
+  width: 12rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, #93b4ff 0%, #4f7cff 100%);
+  opacity: 0.5;
+  transform-origin: center bottom;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.record-wave-active .record-wave-bar,
+.record-wave-paused .record-wave-bar {
+  opacity: 1;
+  animation-name: waveDance;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-timing-function: ease-in-out;
+}
+
+.record-wave-paused .record-wave-bar {
+  opacity: 0.72;
+  animation-play-state: paused;
+  transform: scaleY(0.92);
+}
+
+.wave-bar-1 {
+  height: 22rpx;
+  animation-duration: 0.95s;
+  animation-delay: -0.15s;
+}
+
+.wave-bar-2 {
+  height: 34rpx;
+  animation-duration: 1.2s;
+  animation-delay: -0.45s;
+}
+
+.wave-bar-3 {
+  height: 52rpx;
+  animation-duration: 0.88s;
+  animation-delay: -0.3s;
+}
+
+.wave-bar-4 {
+  height: 66rpx;
+  animation-duration: 1.1s;
+  animation-delay: -0.55s;
+}
+
+.wave-bar-5 {
+  height: 48rpx;
+  animation-duration: 0.92s;
+  animation-delay: -0.2s;
+}
+
+.wave-bar-6 {
+  height: 30rpx;
+  animation-duration: 1.18s;
+  animation-delay: -0.65s;
+}
+
+.wave-bar-7 {
+  height: 20rpx;
+  animation-duration: 1.04s;
+  animation-delay: -0.35s;
+}
+
+.record-visual-meta {
+  margin-top: 8rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10rpx;
+  text-align: center;
+}
+
+.record-status-chip {
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.record-status-chip-recording {
+  background: rgba(79, 124, 255, 0.14);
+  color: #4f7cff;
+}
+
+.record-status-chip-paused {
+  background: rgba(214, 166, 90, 0.16);
+  color: #b7791f;
+}
+
+.record-status-chip-done {
+  background: rgba(47, 158, 116, 0.14);
+  color: #2f9e74;
+}
+
+.record-visual-text {
+  color: #6f7b90;
+  font-size: 24rpx;
+  line-height: 1.6;
 }
 
 .flow-panel {
@@ -95,16 +261,16 @@
 }
 
 .flow-step-dot-done {
-  background: #16a34a;
+  background: #2f9e74;
 }
 
 .flow-step-dot-active {
-  background: #1a73e8;
-  box-shadow: 0 0 0 8rpx rgba(26, 115, 232, 0.16);
+  background: #4f7cff;
+  box-shadow: 0 0 0 8rpx rgba(79, 124, 255, 0.16);
 }
 
 .flow-step-dot-error {
-  background: #c43d31;
+  background: #d46a6a;
 }
 
 .flow-step-label {
@@ -113,16 +279,16 @@
 }
 
 .flow-step-label-done {
-  color: #0f766e;
+  color: #2f9e74;
 }
 
 .flow-step-label-active {
-  color: #1d4ed8;
+  color: #4f7cff;
   font-weight: 600;
 }
 
 .flow-step-label-error {
-  color: #c43d31;
+  color: #d46a6a;
   font-weight: 600;
 }
 
@@ -136,6 +302,13 @@
   font-weight: 600;
 }
 
+.result-subtitle {
+  margin-top: 12rpx;
+  color: #64748b;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
 .draft-list {
   margin-top: 20rpx;
 }
@@ -147,10 +320,20 @@
   background: #f8fafc;
 }
 
+.draft-card-editing {
+  border: 2rpx solid rgba(79, 124, 255, 0.18);
+}
+
 .draft-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.draft-header-main {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
 }
 
 .draft-index {
@@ -158,10 +341,24 @@
   font-size: 24rpx;
 }
 
+.draft-type-tag {
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.draft-type-tag-expense {
+  background: rgba(212, 106, 106, 0.12);
+}
+
+.draft-type-tag-income {
+  background: rgba(47, 158, 116, 0.12);
+}
+
 .draft-amount {
   font-size: 36rpx;
   font-weight: 700;
-  color: #1f2d3d;
 }
 
 .draft-meta {
@@ -178,6 +375,10 @@
 .draft-category-icon {
   width: 28rpx;
   height: 28rpx;
+}
+
+.draft-edit-btn {
+  margin-top: 20rpx;
 }
 
 .empty-tip {
@@ -229,4 +430,34 @@
 .picker-category-icon {
   width: 28rpx;
   height: 28rpx;
+}
+
+@keyframes waveDance {
+  0% {
+    transform: scaleY(0.5);
+  }
+
+  50% {
+    transform: scaleY(1.18);
+  }
+
+  100% {
+    transform: scaleY(0.42);
+  }
+}
+
+@keyframes rippleSpread {
+  0% {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+
+  20% {
+    opacity: 0.42;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(2.45);
+  }
 }

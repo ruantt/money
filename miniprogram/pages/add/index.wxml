@@ -17,6 +17,30 @@
     </view>
     <view class="flow-tip">点开始录音，说完后点停止，系统会自动整理成账单草稿。</view>
 
+    <view class="record-visual-panel">
+      <view class="record-ripple-shell {{recordStatus === 'recording' ? 'record-ripple-shell-active' : recordStatus === 'paused' ? 'record-ripple-shell-paused' : ''}}">
+        <view class="record-ripple record-ripple-one"></view>
+        <view class="record-ripple record-ripple-two"></view>
+        <view class="record-ripple record-ripple-three"></view>
+        <view class="record-wave {{recordStatus === 'recording' ? 'record-wave-active' : recordStatus === 'paused' ? 'record-wave-paused' : ''}}">
+          <view class="record-wave-bar wave-bar-1"></view>
+          <view class="record-wave-bar wave-bar-2"></view>
+          <view class="record-wave-bar wave-bar-3"></view>
+          <view class="record-wave-bar wave-bar-4"></view>
+          <view class="record-wave-bar wave-bar-5"></view>
+          <view class="record-wave-bar wave-bar-6"></view>
+          <view class="record-wave-bar wave-bar-7"></view>
+        </view>
+      </view>
+
+      <view class="record-visual-meta">
+        <view class="record-status-chip record-status-chip-{{recordStatus}}">{{recordStatusText}}</view>
+        <view class="record-visual-text">
+          {{recordStatus === 'recording' ? '正在捕捉语音波形...' : recordStatus === 'paused' ? '录音已暂停，波形保持当前状态。' : '开始录音后，这里会出现动态反馈。'}}
+        </view>
+      </view>
+    </view>
+
     <view class="info-row">
       <view class="muted">录音时长</view>
       <view>{{recordSeconds}} 秒</view>
@@ -66,23 +90,33 @@
     <view class="section-title">待确认账单</view>
 
     <view id="voice-draft-result" class="result-panel">
-      <view class="result-title">AI 已整理出这些账单</view>
+      <view class="result-title">{{draftEditMode ? '选择要修改的账单' : 'AI 已整理出这些账单草稿'}}</view>
+      <view wx:if="{{parseDrafts.length > 0 && draftEditMode}}" class="result-subtitle">
+        逐笔修改后返回草稿列表，再统一确认添加。
+      </view>
 
       <view wx:if="{{parseDrafts.length > 0}}" class="draft-list">
         <block wx:for="{{parseDrafts}}" wx:key="index">
-          <view class="draft-card">
+          <view class="draft-card {{draftEditMode ? 'draft-card-editing' : ''}}">
             <view class="draft-header">
-              <view class="draft-index">第 {{index + 1}} 笔</view>
-              <view class="draft-amount">¥{{item.amount}}</view>
+              <view class="draft-header-main">
+                <view class="draft-index">第 {{index + 1}} 笔</view>
+                <view class="draft-type-tag draft-type-tag-{{item.type}} {{item.type === 'income' ? 'amount-income' : 'amount-expense'}}">{{item.typeText}}</view>
+              </view>
+              <view class="draft-amount {{item.type === 'income' ? 'amount-income' : 'amount-expense'}}">
+                {{item.type === 'income' ? '+' : '-'}}¥{{item.amount || '--'}}
+              </view>
             </view>
             <view class="draft-meta draft-meta-category">
-              <view>分类：</view>
+              <view>类目：</view>
               <view class="category-display">
                 <image class="category-display-icon draft-category-icon" src="{{item.categoryIcon}}" mode="aspectFit"></image>
                 <view class="category-display-text">{{item.category}}</view>
               </view>
             </view>
+            <view class="draft-meta">日期：{{item.date}}</view>
             <view class="draft-meta">备注：{{item.note || "无"}}</view>
+            <button wx:if="{{draftEditMode}}" class="secondary-btn draft-edit-btn" data-index="{{index}}" bindtap="onEditDraftTap">修改这笔</button>
           </view>
         </block>
       </view>
@@ -100,9 +134,15 @@
       </view>
     </view>
 
-    <view wx:if="{{parseDrafts.length > 0}}" class="button-row">
-      <button class="primary-btn action-btn" loading="{{confirmSaving}}" disabled="{{confirmSaving || voiceFlowBusy}}" bindtap="onConfirmDraftTap">确认保存</button>
-      <button class="secondary-btn action-btn" disabled="{{confirmSaving || voiceFlowBusy}}" bindtap="onBackToEditTap">返回修改</button>
+    <view wx:if="{{parseDrafts.length > 0 && !draftEditMode}}" class="button-row">
+      <button class="primary-btn action-btn action-btn-third" loading="{{confirmSaving}}" disabled="{{confirmSaving || voiceFlowBusy}}" bindtap="onConfirmDraftTap">确认添加</button>
+      <button class="secondary-btn action-btn action-btn-third" disabled="{{confirmSaving || voiceFlowBusy}}" bindtap="onModifyDraftTap">修改信息</button>
+      <button class="danger-btn action-btn action-btn-third" disabled="{{confirmSaving || voiceFlowBusy}}" bindtap="onCancelDraftTap">取消本次</button>
+    </view>
+
+    <view wx:if="{{parseDrafts.length > 0 && draftEditMode}}" class="button-row">
+      <button class="primary-btn action-btn" disabled="{{confirmSaving || voiceFlowBusy}}" bindtap="onBackToDraftTap">返回草稿</button>
+      <button class="danger-btn action-btn" disabled="{{confirmSaving || voiceFlowBusy}}" bindtap="onCancelDraftTap">取消本次</button>
     </view>
   </view>
 

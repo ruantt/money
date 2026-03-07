@@ -8,7 +8,7 @@
   </view>
 
   <block wx:else>
-    <view class="card">
+    <view class="card stats-hero-card">
       <view class="section-title">统计概览</view>
 
       <view class="filter-row">
@@ -41,21 +41,38 @@
 
       <view class="range-text">当前范围：{{rangeLabel}}</view>
 
-      <view class="row stat-line">
-        <view class="muted">账单数量</view>
-        <view>{{billCount}}</view>
+      <view class="stats-kpi-grid">
+        <view class="stats-kpi">
+          <view class="stats-kpi-label">账单数量</view>
+          <view class="stats-kpi-value">{{billCount}}</view>
+        </view>
+        <view class="stats-kpi">
+          <view class="stats-kpi-label">总支出</view>
+          <view class="stats-kpi-value amount-expense">¥{{totalExpense}}</view>
+        </view>
+        <view class="stats-kpi">
+          <view class="stats-kpi-label">总收入</view>
+          <view class="stats-kpi-value amount-income">¥{{totalIncome}}</view>
+        </view>
+        <view class="stats-kpi">
+          <view class="stats-kpi-label">结余</view>
+          <view class="stats-kpi-value">¥{{balance}}</view>
+        </view>
       </view>
-      <view class="row stat-line">
-        <view class="muted">总支出</view>
-        <view class="amount-expense">¥{{totalExpense}}</view>
+    </view>
+
+    <view class="card chart-card">
+      <view class="chart-header">
+        <view class="section-title section-title-compact">日支出趋势</view>
+        <view class="chart-subtitle">{{trendRangeText}}</view>
       </view>
-      <view class="row stat-line">
-        <view class="muted">总收入</view>
-        <view class="amount-income">¥{{totalIncome}}</view>
+
+      <view wx:if="{{hasExpenseTrendData}}" class="chart-shell">
+        <ec-canvas id="expenseTrendChart" canvas-id="expense-trend-canvas" ec="{{expenseTrendEc}}" class="chart-canvas trend-chart"></ec-canvas>
       </view>
-      <view class="row stat-line">
-        <view class="muted">结余</view>
-        <view>¥{{balance}}</view>
+
+      <view wx:else class="placeholder chart-empty">
+        当前范围内暂无可绘制的支出趋势
       </view>
     </view>
 
@@ -71,17 +88,22 @@
         当前范围内暂无支出记录
       </view>
 
-        <block wx:else>
-          <block wx:for="{{expenseCategories}}" wx:key="category">
-            <view class="row top-item">
-              <view class="top-item-category category-display">
-                <image class="category-display-icon top-item-icon" src="{{item.categoryIcon}}" mode="aspectFit"></image>
-                <view class="category-display-text">{{item.category}}</view>
-              </view>
-              <view class="top-item-value">¥{{item.amount_text}}（{{item.ratio_text}}）</view>
+      <block wx:else>
+        <view class="chart-shell donut-shell">
+          <ec-canvas id="expenseDonutChart" canvas-id="expense-donut-canvas" ec="{{expenseDonutEc}}" class="chart-canvas donut-chart"></ec-canvas>
+        </view>
+        <view class="donut-helper">环形图展示当前范围内各分类支出占比</view>
+
+        <block wx:for="{{expenseCategories}}" wx:key="category">
+          <view class="row top-item">
+            <view class="top-item-category category-display">
+              <image class="category-display-icon top-item-icon" src="{{item.categoryIcon}}" mode="aspectFit"></image>
+              <view class="category-display-text">{{item.category}}</view>
             </view>
-          </block>
+            <view class="top-item-value amount-expense">¥{{item.amount_text}}（{{item.ratio_text}}）</view>
+          </view>
         </block>
+      </block>
     </view>
 
     <view wx:if="{{hasIncome}}" class="card">
@@ -92,7 +114,7 @@
             <image class="category-display-icon top-item-icon" src="{{item.categoryIcon}}" mode="aspectFit"></image>
             <view class="category-display-text">{{item.category}}</view>
           </view>
-          <view class="top-item-value">¥{{item.amount_text}}（{{item.ratio_text}}）</view>
+          <view class="top-item-value amount-income">¥{{item.amount_text}}（{{item.ratio_text}}）</view>
         </view>
       </block>
     </view>
