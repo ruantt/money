@@ -1,4 +1,4 @@
-const { ALL_CATEGORIES, getDefaultCategoryByType } = require("../../utils/constants");
+const { ALL_CATEGORIES, getCategoryDisplay, getDefaultCategoryByType } = require("../../utils/constants");
 const {
   BILLS_COLLECTION,
   buildBillUpdateRecord,
@@ -22,6 +22,21 @@ function findCategoryIndex(categoryOptions, category) {
   return index >= 0 ? index : 0;
 }
 
+function buildCategorySelectionData(categoryOptions, categoryIndex) {
+  const safeIndex = Number.isInteger(categoryIndex)
+    && categoryIndex >= 0
+    && categoryIndex < categoryOptions.length
+    ? categoryIndex
+    : 0;
+  const categoryDisplay = getCategoryDisplay(categoryOptions[safeIndex]);
+
+  return {
+    categoryIndex: safeIndex,
+    selectedCategoryText: categoryDisplay.name,
+    selectedCategoryIcon: categoryDisplay.icon,
+  };
+}
+
 function formatAmountInputValue(value) {
   const amount = Number(value);
   if (!Number.isFinite(amount) || amount <= 0) {
@@ -38,6 +53,8 @@ Page({
     type: "expense",
     amount: "",
     categoryIndex: 0,
+    selectedCategoryText: getCategoryDisplay(ALL_CATEGORIES[0]).name,
+    selectedCategoryIcon: getCategoryDisplay(ALL_CATEGORIES[0]).icon,
     date: today(),
     note: "",
     sourceText: "",
@@ -88,7 +105,10 @@ Page({
       this.setData({
         type,
         amount: formatAmountInputValue(bill.amount),
-        categoryIndex: findCategoryIndex(this.data.categoryOptions, category),
+        ...buildCategorySelectionData(
+          this.data.categoryOptions,
+          findCategoryIndex(this.data.categoryOptions, category)
+        ),
         date: getBillDate(bill) || today(),
         note: typeof bill.note === "string" ? bill.note : "",
         sourceText: getSourceText(bill.source),
@@ -111,7 +131,10 @@ Page({
 
     this.setData({
       type,
-      categoryIndex: findCategoryIndex(this.data.categoryOptions, defaultCategory),
+      ...buildCategorySelectionData(
+        this.data.categoryOptions,
+        findCategoryIndex(this.data.categoryOptions, defaultCategory)
+      ),
     });
   },
 
@@ -123,7 +146,7 @@ Page({
 
   onCategoryChange(e) {
     this.setData({
-      categoryIndex: Number(e.detail.value),
+      ...buildCategorySelectionData(this.data.categoryOptions, Number(e.detail.value)),
     });
   },
 

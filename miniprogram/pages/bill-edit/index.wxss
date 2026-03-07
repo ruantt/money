@@ -38,8 +38,17 @@
 }
 
 .picker-value {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  min-width: 0;
   color: #1f2d3d;
   font-weight: 500;
+}
+
+.picker-category-icon {
+  width: 28rpx;
+  height: 28rpx;
 }
 
 .button-row {

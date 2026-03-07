@@ -44,7 +44,10 @@
       <view class="field row">
         <view class="label">类目</view>
         <picker mode="selector" range="{{categoryOptions}}" value="{{categoryIndex}}" bindchange="onCategoryChange">
-          <view class="picker-value">{{categoryOptions[categoryIndex]}}</view>
+          <view class="picker-value category-display">
+            <image class="category-display-icon picker-category-icon" src="{{selectedCategoryIcon}}" mode="aspectFit"></image>
+            <view class="category-display-text">{{selectedCategoryText}}</view>
+          </view>
         </picker>
       </view>
 

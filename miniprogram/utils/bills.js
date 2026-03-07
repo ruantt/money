@@ -1,4 +1,8 @@
-const { FALLBACK_CATEGORY, getDefaultCategoryByType } = require("./constants");
+const {
+  getCategoryDisplay,
+  normalizeCategoryName,
+  normalizeCategoryForStorage,
+} = require("./constants");
 
 const BILLS_COLLECTION = "bills";
 const BILLS_BATCH_SIZE = 20;
@@ -82,6 +86,18 @@ function formatDateTime(value) {
   return `${year}-${month}-${day} ${hour}:${minute}`;
 }
 
+function formatTime(value) {
+  const date = toDateObject(value);
+  if (!date) {
+    return "时间未知";
+  }
+
+  const hour = padNumber(date.getHours());
+  const minute = padNumber(date.getMinutes());
+
+  return `${hour}:${minute}`;
+}
+
 function normalizeText(value, fallback) {
   if (typeof value !== "string") {
     return fallback;
@@ -100,9 +116,7 @@ function getBillType(item) {
 }
 
 function getBillCategory(item) {
-  const type = getBillType(item);
-  const fallbackCategory = type === "income" ? getDefaultCategoryByType(type) : FALLBACK_CATEGORY;
-  return normalizeText(item && item.category, fallbackCategory);
+  return normalizeCategoryName(item && item.category);
 }
 
 function getBillDate(item) {
@@ -112,6 +126,11 @@ function getBillDate(item) {
 
   const createdAt = toDateObject(getBillCreatedAtValue(item));
   return createdAt ? formatDate(createdAt) : "";
+}
+
+function getBillMonthKey(item) {
+  const billDate = getBillDate(item);
+  return billDate ? billDate.slice(0, 7) : "";
 }
 
 function getSourceText(value) {
@@ -130,6 +149,7 @@ function normalizeBillListItem(item, index) {
   const amountValue = Number(item && item.amount);
   const safeAmountValue = Number.isFinite(amountValue) ? amountValue : 0;
   const type = getBillType(item);
+  const categoryDisplay = getCategoryDisplay(item && item.category);
 
   return {
     id: item && item._id ? item._id : `bill_${index}`,
@@ -139,9 +159,12 @@ function normalizeBillListItem(item, index) {
     amount_class: type === "income" ? "amount-income" : "amount-expense",
     type_value: type,
     type_text: type === "income" ? "收入" : "支出",
-    category_text: getBillCategory(item),
+    category_text: categoryDisplay.name,
+    category_icon: categoryDisplay.icon,
     note_text: normalizeText(item && item.note, "无"),
     source_text: getSourceText(item && item.source),
+    time_text: formatTime(getBillCreatedAtValue(item)),
+    month_key: getBillMonthKey(item),
     date_text: getBillDate(item) || "日期未知",
     created_at_text: formatDateTime(getBillCreatedAtValue(item)),
   };
@@ -154,9 +177,9 @@ function buildManualBillRecord(db, payload) {
   }
 
   const type = payload && payload.type === "income" ? "income" : "expense";
-  const category = normalizeText(
+  const category = normalizeCategoryForStorage(
     payload && payload.category,
-    getDefaultCategoryByType(type)
+    type
   );
   const note = typeof (payload && payload.note) === "string" ? payload.note.trim() : "";
   const date = isValidDateString(payload && payload.date)
@@ -181,7 +204,7 @@ function buildVoiceBillRecord(db, payload) {
     return null;
   }
 
-  const category = normalizeText(payload && payload.category, FALLBACK_CATEGORY);
+  const category = normalizeCategoryName(payload && payload.category);
   const note = typeof (payload && payload.note) === "string" ? payload.note.trim() : "";
   const transcript = typeof (payload && payload.transcript) === "string" ? payload.transcript.trim() : "";
   const date = isValidDateString(payload && payload.date)
@@ -208,9 +231,9 @@ function buildBillUpdateRecord(db, payload) {
   }
 
   const type = payload && payload.type === "income" ? "income" : "expense";
-  const category = normalizeText(
+  const category = normalizeCategoryForStorage(
     payload && payload.category,
-    getDefaultCategoryByType(type)
+    type
   );
   const note = typeof (payload && payload.note) === "string" ? payload.note.trim() : "";
   const date = isValidDateString(payload && payload.date)
@@ -297,10 +320,12 @@ module.exports = {
   formatMoney,
   formatDate,
   formatDateTime,
+  formatTime,
   normalizeText,
   getBillType,
   getBillCategory,
   getBillDate,
+  getBillMonthKey,
   getSourceText,
   normalizeBillListItem,
   buildManualBillRecord,

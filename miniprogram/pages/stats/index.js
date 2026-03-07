@@ -1,3 +1,4 @@
+const { getCategoryDisplay } = require("../../utils/constants");
 const { fetchBills, formatMoney, getBillCategory, getBillDate, getBillType } = require("../../utils/bills");
 
 const FILTER_MODE = {
@@ -44,8 +45,10 @@ function buildCategoryRows(categoryMap, totalAmount) {
   return Object.keys(categoryMap)
     .map((category) => {
       const amountValue = categoryMap[category];
+      const categoryDisplay = getCategoryDisplay(category);
       return {
-        category,
+        category: categoryDisplay.name,
+        categoryIcon: categoryDisplay.icon,
         amount_value: amountValue,
         amount_text: formatMoney(amountValue),
         ratio_text: totalAmount > 0 ? `${((amountValue / totalAmount) * 100).toFixed(1)}%` : "0.0%",

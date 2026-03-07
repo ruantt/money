@@ -1,17 +1,25 @@
 <view class="page">
   <view class="card">
-    <view class="section-title">语音记一笔</view>
-    <view class="info-row">
-      <view class="muted">录音状态</view>
-      <view>{{recordStatusText}}</view>
+    <view class="section-header">
+      <image
+        wx:if="{{recordStatus === 'recording' || recordStatus === 'paused'}}"
+        class="section-icon"
+        src="../../assets/icons/mic-recording.png"
+        mode="aspectFit"
+      ></image>
+      <image
+        wx:else
+        class="section-icon"
+        src="../../assets/icons/mic.png"
+        mode="aspectFit"
+      ></image>
+      <view class="section-title section-title-no-margin">语音记一笔</view>
     </view>
+    <view class="flow-tip">点开始录音，说完后点停止，系统会自动整理成账单草稿。</view>
+
     <view class="info-row">
       <view class="muted">录音时长</view>
       <view>{{recordSeconds}} 秒</view>
-    </view>
-    <view class="info-row">
-      <view class="muted">播放状态</view>
-      <view>{{playStatusText}}</view>
     </view>
     <view wx:if="{{pauseResumeTip}}" class="muted">{{pauseResumeTip}}</view>
 
@@ -22,14 +30,9 @@
       <button class="danger-btn action-btn" disabled="{{recordStatus !== 'recording' && recordStatus !== 'paused'}}" bindtap="onStopRecordTap">停止录音</button>
     </view>
 
-    <view class="path-block">
-      <view class="muted">tempFilePath</view>
-      <view class="path-text">{{tempFilePath || "暂无录音文件"}}</view>
-    </view>
-
-    <view class="button-row">
-      <button class="secondary-btn action-btn" disabled="{{!tempFilePath || playStatus === 'playing' || voiceFlowBusy}}" bindtap="onPlayRecordTap">播放录音</button>
-      <button class="danger-btn action-btn" disabled="{{playStatus !== 'playing'}}" bindtap="onStopPlayTap">停止播放</button>
+    <view wx:if="{{tempFilePath}}" class="button-row compact-row">
+      <button class="secondary-btn action-btn" disabled="{{playStatus === 'playing' || voiceFlowBusy}}" bindtap="onPlayRecordTap">播放录音</button>
+      <button class="secondary-btn action-btn" disabled="{{playStatus !== 'playing'}}" bindtap="onStopPlayTap">停止播放</button>
     </view>
 
     <view wx:if="{{recordError}}" class="cloud-result cloud-result-error">{{recordError}}</view>
@@ -37,8 +40,7 @@
   </view>
 
   <view class="card">
-    <view class="section-title">语音处理进度</view>
-    <view class="flow-tip">停止录音后，系统会自动上传录音、识别语音并生成账单草稿。</view>
+    <view class="section-title">处理进度</view>
 
     <view class="flow-panel">
       <view class="flow-message">{{voiceFlowMessage}}</view>
@@ -54,57 +56,17 @@
 
     <view wx:if="{{voiceFlowError}}" class="cloud-result cloud-result-error">{{voiceFlowError}}</view>
 
-    <button wx:if="{{voiceFlowStage === 'error' && tempFilePath && !voiceFlowBusy}}" class="primary-btn" bindtap="onRetryAutoFlowTap">重试自动处理</button>
-
-    <view class="fallback-title">备用处理入口</view>
-    <view class="muted">如果自动流程失败，可以使用下面的按钮继续处理当前录音。</view>
-
-    <view class="info-row">
-      <view class="muted">上传状态</view>
-      <view>{{uploadStatusText}}</view>
+    <view wx:if="{{voiceFlowStage === 'error' && !voiceFlowBusy}}" class="button-row">
+      <button wx:if="{{tempFilePath}}" class="primary-btn action-btn" bindtap="onRetryAutoFlowTap">重试处理</button>
+      <button class="secondary-btn action-btn" bindtap="onRecordAgainTap">重新录音</button>
     </view>
-    <button class="secondary-btn" loading="{{uploadStatus === 'uploading'}}" disabled="{{!tempFilePath || uploadStatus === 'uploading' || voiceFlowBusy || parseDrafts.length > 0 || confirmSaving}}" bindtap="onUploadRecordTap">上传录音</button>
-
-    <view class="path-block">
-      <view class="muted">fileID</view>
-      <view class="path-text">{{uploadFileID || "上传成功后会显示 fileID"}}</view>
-    </view>
-
-    <view class="info-row top-gap">
-      <view class="muted">处理状态</view>
-      <view>{{processStatusText}}</view>
-    </view>
-    <button class="secondary-btn" loading="{{processStatus === 'processing'}}" disabled="{{!uploadFileID || processStatus === 'processing' || voiceFlowBusy || parseDrafts.length > 0 || confirmSaving}}" bindtap="onSubmitProcessTap">提交云端处理</button>
-
-    <view class="path-block">
-      <view class="muted">transcript</view>
-      <view class="path-text">{{processTranscript || "提交成功后会显示 transcript"}}</view>
-    </view>
-
-    <view class="path-block">
-      <view class="muted">处理结果</view>
-      <view class="path-text">{{processResult || "提交成功后会显示完整处理结果"}}</view>
-    </view>
-
-    <view wx:if="{{uploadError}}" class="cloud-result cloud-result-error">{{uploadError}}</view>
-    <view wx:if="{{processError}}" class="cloud-result cloud-result-error">{{processError}}</view>
   </view>
 
   <view class="card">
-    <view class="section-title">AI 草稿确认</view>
-    <view class="info-row">
-      <view class="muted">解析状态</view>
-      <view>{{parseStatusText}}</view>
-    </view>
-    <button class="secondary-btn" loading="{{parseStatus === 'processing'}}" disabled="{{!processTranscript || parseStatus === 'processing' || voiceFlowBusy || parseDrafts.length > 0 || confirmSaving}}" bindtap="onParseBillDraftTap">手动触发 AI 解析</button>
-
-    <view class="path-block">
-      <view class="muted">解析提示</view>
-      <view class="path-text">{{parseMessage || "自动处理完成后会在这里生成结构化草稿；如果自动流程失败，也可以手动重试。"}}</view>
-    </view>
+    <view class="section-title">待确认账单</view>
 
     <view id="voice-draft-result" class="result-panel">
-      <view class="result-title">AI 解析结果展示区</view>
+      <view class="result-title">AI 已整理出这些账单</view>
 
       <view wx:if="{{parseDrafts.length > 0}}" class="draft-list">
         <block wx:for="{{parseDrafts}}" wx:key="index">
@@ -113,36 +75,39 @@
               <view class="draft-index">第 {{index + 1}} 笔</view>
               <view class="draft-amount">¥{{item.amount}}</view>
             </view>
-            <view class="draft-meta">分类：{{item.category}}</view>
+            <view class="draft-meta draft-meta-category">
+              <view>分类：</view>
+              <view class="category-display">
+                <image class="category-display-icon draft-category-icon" src="{{item.categoryIcon}}" mode="aspectFit"></image>
+                <view class="category-display-text">{{item.category}}</view>
+              </view>
+            </view>
             <view class="draft-meta">备注：{{item.note || "无"}}</view>
           </view>
         </block>
       </view>
 
-      <view wx:elif="{{parseStatus === 'processing'}}" class="empty-tip">
-        AI 正在解析，结果稍后会显示在这里。
+      <view wx:elif="{{voiceFlowBusy}}" class="empty-tip">
+        正在整理这笔账，稍后会自动显示在这里。
+      </view>
+
+      <view wx:elif="{{voiceFlowStage === 'error'}}" class="empty-tip">
+        这次处理没有完成，你可以重试处理，或重新录一段语音。
       </view>
 
       <view wx:else class="empty-tip">
-        暂无可展示的账单草稿，完成解析后会在这里显示。
+        录完音后，系统会自动把结果整理成待确认账单。
       </view>
-    </view>
-
-    <view wx:if="{{parseMissingFields.length > 0}}" class="path-block">
-      <view class="muted">缺失字段</view>
-      <view class="path-text">{{parseMissingFieldsText}}</view>
     </view>
 
     <view wx:if="{{parseDrafts.length > 0}}" class="button-row">
       <button class="primary-btn action-btn" loading="{{confirmSaving}}" disabled="{{confirmSaving || voiceFlowBusy}}" bindtap="onConfirmDraftTap">确认保存</button>
-      <button class="secondary-btn action-btn" disabled="{{confirmSaving || voiceFlowBusy}}" bindtap="onCancelDraftTap">取消</button>
+      <button class="secondary-btn action-btn" disabled="{{confirmSaving || voiceFlowBusy}}" bindtap="onBackToEditTap">返回修改</button>
     </view>
-
-    <view wx:if="{{parseError}}" class="cloud-result cloud-result-error">{{parseError}}</view>
   </view>
 
   <view class="card">
-    <view class="section-title">手动补记</view>
+    <view class="section-title">手动记一笔</view>
 
     <view class="field">
       <view class="label">金额</view>
@@ -164,7 +129,10 @@
     <view class="field row">
       <view class="label">类目</view>
       <picker mode="selector" range="{{categoryOptions}}" value="{{categoryIndex}}" bindchange="onCategoryChange">
-        <view class="picker-value">{{categoryOptions[categoryIndex]}}</view>
+        <view class="picker-value category-display">
+          <image class="category-display-icon picker-category-icon" src="{{selectedCategoryIcon}}" mode="aspectFit"></image>
+          <view class="category-display-text">{{selectedCategoryText}}</view>
+        </view>
       </picker>
     </view>
 

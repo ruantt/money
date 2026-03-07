@@ -56,7 +56,7 @@
     <view class="info">集合为常用数据库中表的概念。云开发数据库支持自动备份、无损回档，并且QPS高达3千+。</view>
     <view class="title">如何体验</view>
     <view class="info">已自动创建名为“sales”的体验合集，可打开“云开发控制台>数据库>记录列表”中找到该集合。</view>
-    <image class="img" src="../../images/database.png"></image>
+    <image class="img" src="../../assets/images/database.png"></image>
     <view class="title">云函数代码示例</view>
     <view class="code_zone">
       <rich-text nodes="<pre style='overflow: scroll;'>{{callCreateCollectionCode}}</pre>" />
@@ -142,9 +142,9 @@
     <view class="title">集成 Agent-UI 组件指引</view>
     <view class="block">
       <view class="step-title"><text class="step-left">step</text> <text class="step-right">1 </text>拷贝组件源码包</view>
-      <view style="display: flex;align-items: center;">点击复制查看组件仓库地址 <image mode="widthFix" style="width: 20px;height: 20px" bind:tap="copyUrl" src='../../images/copy.svg'/></view>
+      <view style="display: flex;align-items: center;">点击复制查看组件仓库地址 <image mode="widthFix" style="width: 20px;height: 20px" bind:tap="copyUrl" src='../../assets/icons/copy.svg'/></view>
       <view class="step-title"><text class="step-left">step</text> <text class="step-right">2 </text>将组件拷贝至小程序目录中</view>
-      <image class="img" mode="widthFix" src="../../images/ai_example2.png"></image>
+      <image class="img" mode="widthFix" src="../../assets/images/ai_example2.png"></image>
       <view class="step-title"><text class="step-left">step</text> <text class="step-right">3 </text>在页面 .json 配置文件中注册组件</view>
       <view class="code_zone">
         <rich-text nodes="<pre style='overflow: scroll;'>{{ai_page_config}}</pre>" />
@@ -173,7 +173,7 @@
         此处可使用 Express 示例模板进行安装，此处示例命名为 express-test
       </view>
       <view>
-        <image class="img" src="../../images/create_cbr.png" mode="aspectFill"></image>
+        <image class="img" src="../../assets/images/create_cbr.png" mode="aspectFill"></image>
       </view>
       <view class="step-title"><text class="step-left">step</text> <text class="step-right">3</text>小程序端调用</view>
       <view class="code_zone">
@@ -227,7 +227,7 @@
       <view class="plugin-name-box">
         <text class="plugin-name">微信云开发 AI ToolKit</text>
         <view class="copy-btn" bindtap="copyPluginName">
-          <image class="copy-icon" src="../../images/copy.svg" mode="widthFix"></image>
+          <image class="copy-icon" src="../../assets/icons/copy.svg" mode="widthFix"></image>
           <text class="copy-text">复制</text>
         </view>
       </view>
@@ -256,13 +256,13 @@
               <view class="feature-example-wrapper">
                 <text class="feature-example-text">· 帮我创建一个商品列表页面,包含图片、标题、价格和加入购物车按钮</text>
                 <view class="feature-copy-btn" bindtap="copyPrompt" data-prompt="帮我创建一个商品列表页面,包含图片、标题、价格和加入购物车按钮">
-                  <image class="feature-copy-icon" src="../../images/copy.svg" mode="widthFix"></image>
+                  <image class="feature-copy-icon" src="../../assets/icons/copy.svg" mode="widthFix"></image>
                 </view>
               </view>
               <view class="feature-example-wrapper">
                 <text class="feature-example-text">· 帮我完善这个函数,实现商品搜索功能</text>
                 <view class="feature-copy-btn" bindtap="copyPrompt" data-prompt="帮我完善这个函数,实现商品搜索功能">
-                  <image class="feature-copy-icon" src="../../images/copy.svg" mode="widthFix"></image>
+                  <image class="feature-copy-icon" src="../../assets/icons/copy.svg" mode="widthFix"></image>
                 </view>
               </view>
             </view>
@@ -274,13 +274,13 @@
               <view class="feature-example-wrapper">
                 <text class="feature-example-text">· 优化这个页面的间隔，提升信息密度</text>
                 <view class="feature-copy-btn" bindtap="copyPrompt" data-prompt="优化这个页面的间隔，提升信息密度">
-                  <image class="feature-copy-icon" src="../../images/copy.svg" mode="widthFix"></image>
+                  <image class="feature-copy-icon" src="../../assets/icons/copy.svg" mode="widthFix"></image>
                 </view>
               </view>
               <view class="feature-example-wrapper">
                 <text class="feature-example-text">· 完善云函数调用的错误处理代码</text>
                 <view class="feature-copy-btn" bindtap="copyPrompt" data-prompt="完善云函数调用的错误处理代码">
-                  <image class="feature-copy-icon" src="../../images/copy.svg" mode="widthFix"></image>
+                  <image class="feature-copy-icon" src="../../assets/icons/copy.svg" mode="widthFix"></image>
                 </view>
               </view>
             </view>
@@ -290,5 +290,4 @@
     </view>
   </view>
 </block>
-
 

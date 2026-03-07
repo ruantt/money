@@ -3,8 +3,7 @@
     "pages/home/index",
     "pages/add/index",
     "pages/bill-edit/index",
-    "pages/stats/index",
-    "pages/settings/index"
+    "pages/stats/index"
   ],
   "window": {
     "backgroundColor": "#f6f6f6",
@@ -21,19 +20,21 @@
     "list": [
       {
         "pagePath": "pages/home/index",
-        "text": "账单"
+        "text": "账单",
+        "iconPath": "assets/tabbar/home.png",
+        "selectedIconPath": "assets/tabbar/home-active.png"
       },
       {
         "pagePath": "pages/add/index",
-        "text": "记一笔"
+        "text": "记一笔",
+        "iconPath": "assets/tabbar/add.png",
+        "selectedIconPath": "assets/tabbar/add-active.png"
       },
       {
         "pagePath": "pages/stats/index",
-        "text": "统计"
-      },
-      {
-        "pagePath": "pages/settings/index",
-        "text": "设置"
+        "text": "统计",
+        "iconPath": "assets/tabbar/stats.png",
+        "selectedIconPath": "assets/tabbar/stats-active.png"
       }
     ]
   },

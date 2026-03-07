@@ -63,6 +63,7 @@
       <view class="section-title">支出分类汇总</view>
 
       <view wx:if="{{!hasBills}}" class="placeholder">
+        <image class="stats-empty-image" src="../../assets/empty/no-stats.png" mode="aspectFit"></image>
         当前范围内还没有账单记录
       </view>
 
@@ -70,22 +71,28 @@
         当前范围内暂无支出记录
       </view>
 
-      <block wx:else>
-        <block wx:for="{{expenseCategories}}" wx:key="category">
-          <view class="row top-item">
-            <view>{{item.category}}</view>
-            <view>¥{{item.amount_text}}（{{item.ratio_text}}）</view>
-          </view>
+        <block wx:else>
+          <block wx:for="{{expenseCategories}}" wx:key="category">
+            <view class="row top-item">
+              <view class="top-item-category category-display">
+                <image class="category-display-icon top-item-icon" src="{{item.categoryIcon}}" mode="aspectFit"></image>
+                <view class="category-display-text">{{item.category}}</view>
+              </view>
+              <view class="top-item-value">¥{{item.amount_text}}（{{item.ratio_text}}）</view>
+            </view>
+          </block>
         </block>
-      </block>
     </view>
 
     <view wx:if="{{hasIncome}}" class="card">
       <view class="section-title">收入分类汇总</view>
       <block wx:for="{{incomeCategories}}" wx:key="category">
         <view class="row top-item">
-          <view>{{item.category}}</view>
-          <view>¥{{item.amount_text}}（{{item.ratio_text}}）</view>
+          <view class="top-item-category category-display">
+            <image class="category-display-icon top-item-icon" src="{{item.categoryIcon}}" mode="aspectFit"></image>
+            <view class="category-display-text">{{item.category}}</view>
+          </view>
+          <view class="top-item-value">¥{{item.amount_text}}（{{item.ratio_text}}）</view>
         </view>
       </block>
     </view>

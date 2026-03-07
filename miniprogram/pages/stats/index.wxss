@@ -39,10 +39,35 @@
 .top-item {
   padding: 12rpx 0;
   border-bottom: 1rpx solid #edf0f5;
+  gap: 20rpx;
 }
 
 .top-item:last-child {
   border-bottom: none;
+}
+
+.top-item-category {
+  flex: 1;
+  min-width: 0;
+  color: #1f2d3d;
+  font-weight: 500;
+}
+
+.top-item-icon {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+.top-item-value {
+  flex-shrink: 0;
+  color: #334155;
+}
+
+.stats-empty-image {
+  width: 240rpx;
+  height: 160rpx;
+  margin: 0 auto 16rpx;
+  display: block;
 }
 
 .error-card {

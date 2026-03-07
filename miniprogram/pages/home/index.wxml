@@ -1,18 +1,34 @@
 <view class="page">
-  <view class="card">
-    <view class="section-title">账单概览</view>
-    <view class="summary-row">
-      <view class="summary-item">
-        <view class="muted">已加载条数</view>
-        <view>{{summary.visibleCount}}</view>
+  <view class="card month-hero">
+    <view class="month-hero-top">
+      <view>
+        <view class="month-caption">当前查看</view>
+        <picker mode="date" fields="month" value="{{selectedMonth}}" bindchange="onMonthChange">
+          <view class="month-picker-trigger">
+            <view class="month-title">{{selectedMonthLabel}}</view>
+            <view class="month-picker-text">切换月份</view>
+          </view>
+        </picker>
       </view>
-      <view class="summary-item">
-        <view class="muted">支出合计</view>
-        <view class="amount-expense">¥{{summary.totalExpense}}</view>
+      <view wx:if="{{selectedMonth !== currentMonth}}" class="month-reset" bindtap="onResetMonthTap">回到本月</view>
+    </view>
+
+    <view class="month-summary-grid">
+      <view class="month-summary-item">
+        <view class="month-summary-label">账单数</view>
+        <view class="month-summary-value">{{monthSummary.billCount}}</view>
       </view>
-      <view class="summary-item">
-        <view class="muted">收入合计</view>
-        <view class="amount-income">¥{{summary.totalIncome}}</view>
+      <view class="month-summary-item">
+        <view class="month-summary-label">总支出</view>
+        <view class="month-summary-value amount-expense">¥{{monthSummary.totalExpense}}</view>
+      </view>
+      <view class="month-summary-item">
+        <view class="month-summary-label">总收入</view>
+        <view class="month-summary-value amount-income">¥{{monthSummary.totalIncome}}</view>
+      </view>
+      <view class="month-summary-item">
+        <view class="month-summary-label">结余</view>
+        <view class="month-summary-value {{monthSummary.balanceClass}}">¥{{monthSummary.balance}}</view>
       </view>
     </view>
   </view>
@@ -25,45 +41,58 @@
     {{loadError}}
   </view>
 
-  <view wx:elif="{{transactions.length === 0}}" class="card placeholder">
-    还没有账单记录
+  <view wx:elif="{{dateGroups.length === 0}}" class="card empty-card">
+    <image class="empty-image" src="../../assets/empty/no-bills.png" mode="aspectFit"></image>
+    <view class="empty-title">{{selectedMonthLabel}} 还没有账单</view>
+    <view class="muted empty-text">先去记一笔，回来就能按日期查看这个月的账本。</view>
+    <button class="primary-btn empty-action" bindtap="onGoAddTap">去记一笔</button>
   </view>
 
   <block wx:else>
-    <block wx:for="{{transactions}}" wx:key="id">
-      <view class="card bill-card">
-        <view class="row">
-          <view class="amount {{item.amount_class}}">
-            {{item.amount_prefix}}¥{{item.amount_text}}
+    <block wx:for="{{dateGroups}}" wx:key="dateKey" wx:for-item="group">
+      <view class="card day-card">
+        <view class="day-header">
+          <view>
+            <view class="day-title">{{group.dateLabel}}</view>
+            <view class="day-subtitle">{{group.billCount}} 笔</view>
           </view>
-          <view class="type-tag {{item.type_value === 'income' ? 'income-tag' : 'expense-tag'}}">
-            {{item.type_text}}
+          <view class="day-totals">
+            <view wx:if="{{group.expenseTotalText !== '0.00'}}" class="day-total-expense">支出 ¥{{group.expenseTotalText}}</view>
+            <view wx:if="{{group.incomeTotalText !== '0.00'}}" class="day-total-income">收入 ¥{{group.incomeTotalText}}</view>
           </view>
         </view>
-        <view class="bill-meta">分类：{{item.category_text}}</view>
-        <view class="bill-meta">备注：{{item.note_text}}</view>
-        <view class="bill-meta">来源：{{item.source_text}}</view>
-        <view class="bill-meta">记账日期：{{item.date_text}}</view>
-        <view class="row bill-footer">
-          <view class="muted">{{item.created_at_text}}</view>
-        </view>
-        <view class="bill-action-row">
-          <button class="secondary-btn bill-action-btn" size="mini" disabled="{{removingId === item.id}}" data-id="{{item.id}}" bindtap="onEditTap">
-            编辑
-          </button>
-          <button class="danger-btn bill-action-btn" size="mini" loading="{{removingId === item.id}}" disabled="{{removingId === item.id}}" data-id="{{item.id}}" bindtap="onDeleteTap">
-            删除
-          </button>
+
+        <view class="day-list">
+          <block wx:for="{{group.items}}" wx:key="id" wx:for-item="bill">
+            <view class="bill-row" data-id="{{bill.id}}" bindlongpress="onBillLongPress">
+              <view class="bill-main">
+                <view class="bill-title-row">
+                  <view class="bill-category category-display">
+                    <image class="category-display-icon bill-category-icon" src="{{bill.category_icon}}" mode="aspectFit"></image>
+                    <view class="category-display-text">{{bill.category_text}}</view>
+                  </view>
+                  <view class="bill-type">{{bill.type_text}}</view>
+                </view>
+                <view wx:if="{{bill.showNote}}" class="bill-note">{{bill.note_text}}</view>
+                <view class="bill-meta">{{bill.metaText}}</view>
+              </view>
+
+              <view class="bill-side">
+                <view class="bill-amount {{bill.amount_class}}">{{bill.amount_prefix}}¥{{bill.amount_text}}</view>
+                <view class="bill-more" data-id="{{bill.id}}" bindtap="onBillActionTap">更多</view>
+              </view>
+            </view>
+          </block>
         </view>
       </view>
     </block>
 
     <view wx:if="{{loadingMore}}" class="card placeholder load-more-card">
-      加载更多中...
+      正在加载更多...
     </view>
 
     <view wx:elif="{{!hasMore}}" class="card placeholder load-more-card">
-      没有更多账单了
+      这个月的账单已经看完了
     </view>
   </block>
 </view>

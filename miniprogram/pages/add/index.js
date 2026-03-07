@@ -1,4 +1,4 @@
-const { ALL_CATEGORIES, getDefaultCategoryByType } = require("../../utils/constants");
+const { ALL_CATEGORIES, getCategoryDisplay, getDefaultCategoryByType } = require("../../utils/constants");
 const { BILLS_COLLECTION, buildManualBillRecord, buildVoiceBillRecord } = require("../../utils/bills");
 
 const RECORD_STATUS = {
@@ -253,6 +253,21 @@ function getFileExtension(filePath) {
   return "mp3";
 }
 
+function buildCategorySelectionData(categoryOptions, categoryIndex) {
+  const safeIndex = Number.isInteger(categoryIndex)
+    && categoryIndex >= 0
+    && categoryIndex < categoryOptions.length
+    ? categoryIndex
+    : 0;
+  const categoryDisplay = getCategoryDisplay(categoryOptions[safeIndex]);
+
+  return {
+    categoryIndex: safeIndex,
+    selectedCategoryText: categoryDisplay.name,
+    selectedCategoryIcon: categoryDisplay.icon,
+  };
+}
+
 function getManualFormDefaultData() {
   const defaultCategory = getDefaultCategoryByType("expense");
   const categoryIndex = ALL_CATEGORIES.indexOf(defaultCategory);
@@ -260,10 +275,21 @@ function getManualFormDefaultData() {
   return {
     type: "expense",
     amount: "",
-    categoryIndex: categoryIndex >= 0 ? categoryIndex : 0,
+    ...buildCategorySelectionData(ALL_CATEGORIES, categoryIndex),
     date: today(),
     note: "",
   };
+}
+
+function normalizeDraftsForDisplay(drafts) {
+  return (Array.isArray(drafts) ? drafts : []).map((draft) => {
+    const categoryDisplay = getCategoryDisplay(draft && draft.category);
+    return {
+      ...draft,
+      category: categoryDisplay.name,
+      categoryIcon: categoryDisplay.icon,
+    };
+  });
 }
 
 function buildBillRecord(db, draft, transcript) {
@@ -276,14 +302,18 @@ function buildBillRecord(db, draft, transcript) {
   });
 }
 
+const DEFAULT_MANUAL_FORM_DATA = getManualFormDefaultData();
+
 Page({
   data: {
-    type: "expense",
-    amount: "",
+    type: DEFAULT_MANUAL_FORM_DATA.type,
+    amount: DEFAULT_MANUAL_FORM_DATA.amount,
     categoryOptions: ALL_CATEGORIES,
-    categoryIndex: 0,
-    date: today(),
-    note: "",
+    categoryIndex: DEFAULT_MANUAL_FORM_DATA.categoryIndex,
+    selectedCategoryText: DEFAULT_MANUAL_FORM_DATA.selectedCategoryText,
+    selectedCategoryIcon: DEFAULT_MANUAL_FORM_DATA.selectedCategoryIcon,
+    date: DEFAULT_MANUAL_FORM_DATA.date,
+    note: DEFAULT_MANUAL_FORM_DATA.note,
     recordStatus: RECORD_STATUS.IDLE,
     recordStatusText: RECORD_STATUS_TEXT[RECORD_STATUS.IDLE],
     supportsPauseResume: true,
@@ -710,7 +740,7 @@ Page({
 
     this.setData({
       type,
-      categoryIndex: categoryIndex >= 0 ? categoryIndex : 0,
+      ...buildCategorySelectionData(this.data.categoryOptions, categoryIndex),
     });
   },
 
@@ -722,7 +752,7 @@ Page({
 
   onCategoryChange(e) {
     this.setData({
-      categoryIndex: Number(e.detail.value),
+      ...buildCategorySelectionData(this.data.categoryOptions, Number(e.detail.value)),
     });
   },
 
@@ -742,7 +772,7 @@ Page({
     const categoryIndex = this.data.categoryOptions.indexOf(getDefaultCategoryByType("expense"));
     this.setData({
       type: "expense",
-      categoryIndex: categoryIndex >= 0 ? categoryIndex : 0,
+      ...buildCategorySelectionData(this.data.categoryOptions, categoryIndex),
       amount: "28",
       date: today(),
       note: "午饭",
@@ -1271,7 +1301,7 @@ Page({
 
       this.setParseState(PARSE_STATUS.SUCCESS, {
         parseMessage: "已生成账单草稿，请确认保存。",
-        parseDrafts: drafts,
+        parseDrafts: normalizeDraftsForDisplay(drafts),
         parseMissingFields: missingFields,
         parseMissingFieldsText: missingFields.join("、"),
         parseError: "",
@@ -1378,6 +1408,44 @@ Page({
       busy: false,
     });
     this.startAutoVoiceFlow();
+  },
+
+  onRecordAgainTap() {
+    if (this.data.voiceFlowBusy || this.data.confirmSaving) {
+      return;
+    }
+
+    this.autoVoiceFlowId += 1;
+    this.isAutoVoiceProcessing = false;
+    this.clearRecordTimer();
+    this.resetRecordProgress();
+    this.stopPlayback();
+    this.resetPlayState();
+    this.resetUploadState();
+    this.resetProcessState();
+    this.resetParseState();
+    this.setData({
+      confirmSaving: false,
+    });
+    this.setRecordState(RECORD_STATUS.IDLE, {
+      recordSeconds: 0,
+      tempFilePath: "",
+      recordError: "",
+    });
+    this.resetVoiceFlow("准备好后重新录一段语音。");
+  },
+
+  onBackToEditTap() {
+    if (this.data.voiceFlowBusy || this.data.confirmSaving) {
+      return;
+    }
+
+    this.resetParseState();
+    this.resetVoiceFlow("已返回修改，你可以重新录音或改用手动记账。");
+    wx.showToast({
+      title: "已返回修改",
+      icon: "none",
+    });
   },
 
   async onConfirmDraftTap() {
