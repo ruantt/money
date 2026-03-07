@@ -82,18 +82,29 @@
       <view class="path-text">{{parseMessage || "点击按钮后会生成结构化记账草稿"}}</view>
     </view>
 
-    <view wx:if="{{parseDrafts.length > 0}}" class="draft-list">
-      <block wx:for="{{parseDrafts}}" wx:key="index">
-        <view class="draft-card">
-          <view class="row">
-            <view class="draft-amount">¥{{item.amount}}</view>
-            <view class="type-tag {{item.type === 'income' ? 'income-tag' : 'expense-tag'}}">{{item.type}}</view>
+    <view class="result-panel">
+      <view class="result-title">AI 解析结果展示区</view>
+
+      <view wx:if="{{parseDrafts.length > 0}}" class="draft-list">
+        <block wx:for="{{parseDrafts}}" wx:key="index">
+          <view class="draft-card">
+            <view class="draft-header">
+              <view class="draft-index">第 {{index + 1}} 笔</view>
+              <view class="draft-amount">¥{{item.amount}}</view>
+            </view>
+            <view class="draft-meta">分类：{{item.category}}</view>
+            <view class="draft-meta">备注：{{item.note || "无"}}</view>
           </view>
-          <view class="draft-meta">分类：{{item.category}}</view>
-          <view class="draft-meta">备注：{{item.note}}</view>
-          <view class="draft-meta">日期词：{{item.dateText}}</view>
-        </view>
-      </block>
+        </block>
+      </view>
+
+      <view wx:elif="{{parseStatus === 'processing'}}" class="empty-tip">
+        AI 正在解析，结果稍后会显示在这里。
+      </view>
+
+      <view wx:else class="empty-tip">
+        暂无可展示的账单草稿，完成解析后会在这里显示。
+      </view>
     </view>
 
     <view wx:if="{{parseMissingFields.length > 0}}" class="path-block">

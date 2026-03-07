@@ -1,28 +1,93 @@
 <view class="page">
-  <view class="card">
-    <view class="section-title">本月统计（{{month}}）</view>
-    <view class="row stat-line">
-      <view class="muted">总支出</view>
-      <view class="amount-expense">¥{{totalExpense}}</view>
-    </view>
-    <view class="row stat-line">
-      <view class="muted">总收入</view>
-      <view class="amount-income">¥{{totalIncome}}</view>
-    </view>
-    <view class="row stat-line">
-      <view class="muted">结余</view>
-      <view>¥{{balance}}</view>
-    </view>
+  <view wx:if="{{loading}}" class="card placeholder">
+    统计加载中...
   </view>
 
-  <view class="card">
-    <view class="section-title">支出 Top 类目</view>
-    <view wx:if="{{!hasExpense}}" class="placeholder">本月暂无支出数据</view>
-    <block wx:for="{{topCategories}}" wx:key="category">
-      <view class="row top-item">
-        <view>{{item.category}}</view>
-        <view>¥{{item.amount}}（{{item.ratio}}）</view>
-      </view>
-    </block>
+  <view wx:elif="{{loadError}}" class="card placeholder error-card">
+    {{loadError}}
   </view>
+
+  <block wx:else>
+    <view class="card">
+      <view class="section-title">统计概览</view>
+
+      <view class="filter-row">
+        <view
+          class="filter-chip {{filterMode === 'all' ? 'filter-chip-active' : ''}}"
+          data-mode="all"
+          bindtap="onFilterModeTap"
+        >
+          全部时间
+        </view>
+        <view
+          class="filter-chip {{filterMode === 'currentMonth' ? 'filter-chip-active' : ''}}"
+          data-mode="currentMonth"
+          bindtap="onFilterModeTap"
+        >
+          本月
+        </view>
+        <view
+          class="filter-chip {{filterMode === 'customMonth' ? 'filter-chip-active' : ''}}"
+          data-mode="customMonth"
+          bindtap="onFilterModeTap"
+        >
+          指定月份
+        </view>
+      </view>
+
+      <picker wx:if="{{filterMode === 'customMonth'}}" mode="date" fields="month" value="{{selectedMonth}}" bindchange="onMonthChange">
+        <view class="month-picker">选择月份：{{selectedMonth}}</view>
+      </picker>
+
+      <view class="range-text">当前范围：{{rangeLabel}}</view>
+
+      <view class="row stat-line">
+        <view class="muted">账单数量</view>
+        <view>{{billCount}}</view>
+      </view>
+      <view class="row stat-line">
+        <view class="muted">总支出</view>
+        <view class="amount-expense">¥{{totalExpense}}</view>
+      </view>
+      <view class="row stat-line">
+        <view class="muted">总收入</view>
+        <view class="amount-income">¥{{totalIncome}}</view>
+      </view>
+      <view class="row stat-line">
+        <view class="muted">结余</view>
+        <view>¥{{balance}}</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">支出分类汇总</view>
+
+      <view wx:if="{{!hasBills}}" class="placeholder">
+        当前范围内还没有账单记录
+      </view>
+
+      <view wx:elif="{{!hasExpense}}" class="placeholder">
+        当前范围内暂无支出记录
+      </view>
+
+      <block wx:else>
+        <block wx:for="{{expenseCategories}}" wx:key="category">
+          <view class="row top-item">
+            <view>{{item.category}}</view>
+            <view>¥{{item.amount_text}}（{{item.ratio_text}}）</view>
+          </view>
+        </block>
+      </block>
+    </view>
+
+    <view wx:if="{{hasIncome}}" class="card">
+      <view class="section-title">收入分类汇总</view>
+      <block wx:for="{{incomeCategories}}" wx:key="category">
+        <view class="row top-item">
+          <view>{{item.category}}</view>
+          <view>¥{{item.amount_text}}（{{item.ratio_text}}）</view>
+        </view>
+      </block>
+    </view>
+  </block>
 </view>

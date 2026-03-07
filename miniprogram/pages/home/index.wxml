@@ -1,42 +1,60 @@
 <view class="page">
   <view class="card">
-    <view class="section-title">本月概览（{{summary.month}}）</view>
+    <view class="section-title">账单概览</view>
     <view class="summary-row">
       <view class="summary-item">
-        <view class="muted">本月支出</view>
-        <view class="amount-expense">¥{{summary.total_expense}}</view>
+        <view class="muted">已加载条数</view>
+        <view>{{summary.visibleCount}}</view>
       </view>
       <view class="summary-item">
-        <view class="muted">本月收入</view>
-        <view class="amount-income">¥{{summary.total_income}}</view>
+        <view class="muted">支出合计</view>
+        <view class="amount-expense">¥{{summary.totalExpense}}</view>
       </view>
       <view class="summary-item">
-        <view class="muted">结余</view>
-        <view>¥{{summary.balance}}</view>
+        <view class="muted">收入合计</view>
+        <view class="amount-income">¥{{summary.totalIncome}}</view>
       </view>
     </view>
   </view>
 
-  <view wx:if="{{transactions.length === 0}}" class="card placeholder">
-    暂无账单，去“记一笔”录一条或手动添加。
+  <view wx:if="{{loading}}" class="card placeholder">
+    账单加载中...
   </view>
 
-  <block wx:for="{{transactions}}" wx:key="id">
-    <view class="card bill-card">
-      <view class="row">
-        <view class="amount {{item.type === 'income' ? 'amount-income' : 'amount-expense'}}">
-          {{item.type === 'income' ? '+' : '-'}}¥{{item.amount_text}}
+  <view wx:elif="{{loadError}}" class="card placeholder error-card">
+    {{loadError}}
+  </view>
+
+  <view wx:elif="{{transactions.length === 0}}" class="card placeholder">
+    还没有账单记录
+  </view>
+
+  <block wx:else>
+    <block wx:for="{{transactions}}" wx:key="id">
+      <view class="card bill-card">
+        <view class="row">
+          <view class="amount {{item.amount_class}}">
+            {{item.amount_prefix}}¥{{item.amount_text}}
+          </view>
+          <view class="type-tag {{item.type_value === 'income' ? 'income-tag' : 'expense-tag'}}">
+            {{item.type_text}}
+          </view>
         </view>
-        <view class="type-tag {{item.type === 'income' ? 'income-tag' : 'expense-tag'}}">
-          {{item.type_text}}
+        <view class="bill-meta">分类：{{item.category_text}}</view>
+        <view class="bill-meta">备注：{{item.note_text}}</view>
+        <view class="bill-meta">来源：{{item.source_text}}</view>
+        <view class="row bill-footer">
+          <view class="muted">{{item.created_at_text}}</view>
         </view>
       </view>
-      <view class="bill-meta">类目：{{item.category}}</view>
-      <view class="bill-meta">备注：{{item.note || "无"}}</view>
-      <view class="row bill-footer">
-        <view class="muted">{{item.date}}</view>
-        <button class="delete-btn" data-id="{{item.id}}" bindtap="onDeleteTap">删除</button>
-      </view>
+    </block>
+
+    <view wx:if="{{loadingMore}}" class="card placeholder load-more-card">
+      加载更多中...
+    </view>
+
+    <view wx:elif="{{!hasMore}}" class="card placeholder load-more-card">
+      没有更多账单了
     </view>
   </block>
 </view>

@@ -1,3 +1,37 @@
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.filter-chip {
+  padding: 10rpx 20rpx;
+  border-radius: 999rpx;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 24rpx;
+}
+
+.filter-chip-active {
+  background: #1d4ed8;
+  color: #ffffff;
+}
+
+.month-picker {
+  margin-top: 20rpx;
+  padding: 20rpx;
+  border-radius: 12rpx;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.range-text {
+  margin-top: 16rpx;
+  color: #64748b;
+  font-size: 24rpx;
+}
+
 .stat-line {
   padding: 8rpx 0;
 }
@@ -9,4 +43,8 @@
 
 .top-item:last-child {
   border-bottom: none;
+}
+
+.error-card {
+  color: #c43d31;
 }

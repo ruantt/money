@@ -1,5 +1,5 @@
-const store = require("../../utils/store");
 const { ALL_CATEGORIES, getDefaultCategoryByType } = require("../../utils/constants");
+const { BILLS_COLLECTION, buildManualBillRecord, buildVoiceBillRecord } = require("../../utils/bills");
 
 const RECORD_STATUS = {
   IDLE: "idle",
@@ -103,6 +103,29 @@ function getFileExtension(filePath) {
   return "mp3";
 }
 
+function getManualFormDefaultData() {
+  const defaultCategory = getDefaultCategoryByType("expense");
+  const categoryIndex = ALL_CATEGORIES.indexOf(defaultCategory);
+
+  return {
+    type: "expense",
+    amount: "",
+    categoryIndex: categoryIndex >= 0 ? categoryIndex : 0,
+    date: today(),
+    note: "",
+  };
+}
+
+function buildBillRecord(db, draft, transcript) {
+  return buildVoiceBillRecord(db, {
+    amount: draft && draft.amount,
+    category: draft && draft.category,
+    note: draft && draft.note,
+    transcript,
+    date: today(),
+  });
+}
+
 Page({
   data: {
     type: "expense",
@@ -140,6 +163,8 @@ Page({
   },
 
   onLoad() {
+    this.isConfirmSaving = false;
+    this.isManualSaving = false;
     this.initRecorder();
     this.initPlayer();
   },
@@ -497,7 +522,11 @@ Page({
     });
   },
 
-  onSave() {
+  async onSave() {
+    if (this.isManualSaving) {
+      return;
+    }
+
     const amountNumber = Number(this.data.amount);
     if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
       wx.showToast({
@@ -509,8 +538,19 @@ Page({
 
     const category = this.data.categoryOptions[this.data.categoryIndex] || getDefaultCategoryByType(this.data.type);
 
+    if (!wx.cloud || typeof wx.cloud.database !== "function") {
+      wx.showToast({
+        title: "保存失败",
+        icon: "none",
+      });
+      return;
+    }
+
+    const db = wx.cloud.database();
+    let billRecord;
+
     try {
-      store.addTransaction({
+      billRecord = buildManualBillRecord(db, {
         type: this.data.type,
         amount: this.data.amount,
         category,
@@ -520,22 +560,45 @@ Page({
     } catch (err) {
       console.error(err);
       wx.showToast({
-        title: (err && err.message) || "保存失败",
+        title: "保存失败",
         icon: "none",
       });
       return;
     }
 
-    wx.showToast({
-      title: "已保存",
-      icon: "success",
+    this.isManualSaving = true;
+    wx.showLoading({
+      title: "保存中",
+      mask: true,
     });
 
-    setTimeout(() => {
-      wx.switchTab({
-        url: "/pages/home/index",
+    try {
+      await db.collection(BILLS_COLLECTION).add({
+        data: billRecord,
       });
-    }, 350);
+
+      this.setData(getManualFormDefaultData());
+
+      wx.showToast({
+        title: "已保存",
+        icon: "success",
+      });
+
+      setTimeout(() => {
+        wx.switchTab({
+          url: "/pages/home/index",
+        });
+      }, 350);
+    } catch (error) {
+      console.error("manual save failed:", error);
+      wx.showToast({
+        title: "保存失败",
+        icon: "none",
+      });
+    } finally {
+      this.isManualSaving = false;
+      wx.hideLoading();
+    }
   },
 
   onStartRecordTap() {
@@ -856,7 +919,7 @@ Page({
     });
   },
 
-  onConfirmDraftTap() {
+  async onConfirmDraftTap() {
     if (!this.data.parseDrafts.length) {
       wx.showToast({
         title: "当前没有可确认的草稿",
@@ -865,11 +928,98 @@ Page({
       return;
     }
 
-    console.log("confirm bill drafts:", this.data.parseDrafts);
-    wx.showToast({
-      title: "当前阶段仅确认，不入库",
-      icon: "none",
+    if (this.isConfirmSaving) {
+      return;
+    }
+
+    const transcript = (this.data.processTranscript || "").trim();
+    if (!transcript) {
+      const message = "当前缺少 transcript，无法保存账单。";
+      console.error(message);
+      this.setParseState(PARSE_STATUS.ERROR, {
+        parseError: message,
+      });
+      wx.showToast({
+        title: "保存失败",
+        icon: "none",
+      });
+      return;
+    }
+
+    if (!wx.cloud || typeof wx.cloud.database !== "function") {
+      const message = "当前基础库不支持云数据库，请先确认云开发配置。";
+      console.error(message);
+      this.setParseState(PARSE_STATUS.ERROR, {
+        parseError: message,
+      });
+      wx.showToast({
+        title: "保存失败",
+        icon: "none",
+      });
+      return;
+    }
+
+    const db = wx.cloud.database();
+    const billsCollection = db.collection(BILLS_COLLECTION);
+    const records = this.data.parseDrafts
+      .map((draft) => buildBillRecord(db, draft, transcript))
+      .filter(Boolean);
+
+    if (!records.length) {
+      const message = "当前没有可保存的有效账单。";
+      console.error(message);
+      this.setParseState(PARSE_STATUS.ERROR, {
+        parseError: message,
+      });
+      wx.showToast({
+        title: "保存失败",
+        icon: "none",
+      });
+      return;
+    }
+
+    this.isConfirmSaving = true;
+    wx.showLoading({
+      title: "保存中",
+      mask: true,
     });
+
+    try {
+      const savedIds = [];
+
+      for (const record of records) {
+        const res = await billsCollection.add({
+          data: record,
+        });
+        savedIds.push(res && res._id ? res._id : "");
+      }
+
+      console.log("confirm bill drafts saved:", savedIds);
+      this.resetParseState();
+      wx.showToast({
+        title: `已保存${savedIds.length}笔`,
+        icon: "success",
+      });
+    } catch (error) {
+      console.error("confirm bill drafts failed:", error);
+      const errorMessage = error && error.errMsg
+        ? error.errMsg
+        : error && error.message
+          ? error.message
+          : "保存到云数据库失败，请稍后重试。";
+
+      this.setParseState(PARSE_STATUS.ERROR, {
+        parseError: errorMessage,
+      });
+
+      wx.showToast({
+        title: "保存失败",
+        icon: "none",
+      });
+    } finally {
+      this.isConfirmSaving = false;
+      wx.hideLoading();
+    }
   },
 
   onCancelDraftTap() {
