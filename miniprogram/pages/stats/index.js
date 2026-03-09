@@ -150,20 +150,18 @@ function buildAllExpenseTrend(filteredBills) {
 
 function buildExpenseTrend(filteredBills, filterMode, selectedMonth) {
   if (filterMode === FILTER_MODE.ALL) {
-    return {
-      ...buildAllExpenseTrend(filteredBills),
+    return Object.assign({}, buildAllExpenseTrend(filteredBills), {
       rangeText: buildTrendRangeText(filterMode, selectedMonth),
-    };
+    });
   }
 
   const targetMonth = filterMode === FILTER_MODE.CURRENT_MONTH
     ? buildCurrentMonthKey()
     : selectedMonth;
 
-  return {
-    ...buildMonthlyExpenseTrend(filteredBills, targetMonth),
+  return Object.assign({}, buildMonthlyExpenseTrend(filteredBills, targetMonth), {
     rangeText: buildTrendRangeText(filterMode, selectedMonth),
-  };
+  });
 }
 
 function buildExpenseDonutData(expenseCategories) {
@@ -482,11 +480,10 @@ Page({
     );
 
     this.hasLoadedStats = true;
-    this.setData({
-      ...nextData,
+    this.setData(Object.assign({}, nextData, {
       loading: false,
       loadError: "",
-    }, () => {
+    }), () => {
       this.scheduleChartRefresh();
       if (typeof done === "function") {
         done();

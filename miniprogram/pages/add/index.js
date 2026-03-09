@@ -178,51 +178,43 @@ function createFlowError(step, message) {
   return error;
 }
 
+function withStepStatus(item, status) {
+  return Object.assign({}, item, {
+    status,
+  });
+}
+
+function mergeState(baseData, extraData) {
+  return Object.assign({}, baseData, extraData || {});
+}
+
 function buildVoiceFlowSteps(stage, errorStep) {
   if (stage === VOICE_FLOW_STAGE.ERROR && errorStep) {
     const errorIndex = VOICE_FLOW_STEP_LIST.findIndex((item) => item.key === errorStep);
     return VOICE_FLOW_STEP_LIST.map((item, index) => {
       if (index < errorIndex) {
-        return {
-          ...item,
-          status: "done",
-        };
+        return withStepStatus(item, "done");
       }
 
       if (index === errorIndex) {
-        return {
-          ...item,
-          status: "error",
-        };
+        return withStepStatus(item, "error");
       }
 
-      return {
-        ...item,
-        status: "wait",
-      };
+      return withStepStatus(item, "wait");
     });
   }
 
   const progress = VOICE_FLOW_PROGRESS[stage] || VOICE_FLOW_PROGRESS[VOICE_FLOW_STAGE.IDLE];
   return VOICE_FLOW_STEP_LIST.map((item, index) => {
     if (index < progress.completeCount) {
-      return {
-        ...item,
-        status: "done",
-      };
+      return withStepStatus(item, "done");
     }
 
     if (item.key === progress.activeStep) {
-      return {
-        ...item,
-        status: "active",
-      };
+      return withStepStatus(item, "active");
     }
 
-    return {
-      ...item,
-      status: "wait",
-    };
+    return withStepStatus(item, "wait");
   });
 }
 
@@ -293,13 +285,12 @@ function getManualFormDefaultData() {
   const defaultCategory = getDefaultCategoryByType("expense");
   const categoryIndex = ALL_CATEGORIES.indexOf(defaultCategory);
 
-  return {
+  return Object.assign({
     type: "expense",
     amount: "",
-    ...buildCategorySelectionData(ALL_CATEGORIES, categoryIndex),
     date: today(),
     note: "",
-  };
+  }, buildCategorySelectionData(ALL_CATEGORIES, categoryIndex));
 }
 
 function getTypeText(type) {
@@ -418,43 +409,38 @@ Page({
   },
 
   setRecordState(status, extraData) {
-    this.setData({
+    this.setData(mergeState({
       recordStatus: status,
       recordStatusText: RECORD_STATUS_TEXT[status],
-      ...(extraData || {}),
-    });
+    }, extraData));
   },
 
   setPlayState(status, extraData) {
-    this.setData({
+    this.setData(mergeState({
       playStatus: status,
       playStatusText: PLAY_STATUS_TEXT[status],
-      ...(extraData || {}),
-    });
+    }, extraData));
   },
 
   setUploadState(status, extraData) {
-    this.setData({
+    this.setData(mergeState({
       uploadStatus: status,
       uploadStatusText: UPLOAD_STATUS_TEXT[status],
-      ...(extraData || {}),
-    });
+    }, extraData));
   },
 
   setProcessState(status, extraData) {
-    this.setData({
+    this.setData(mergeState({
       processStatus: status,
       processStatusText: PROCESS_STATUS_TEXT[status],
-      ...(extraData || {}),
-    });
+    }, extraData));
   },
 
   setParseState(status, extraData) {
-    this.setData({
+    this.setData(mergeState({
       parseStatus: status,
       parseStatusText: PARSE_STATUS_TEXT[status],
-      ...(extraData || {}),
-    });
+    }, extraData));
   },
 
   setVoiceFlow(stage, extraData) {
@@ -804,10 +790,9 @@ Page({
     const defaultCategory = getDefaultCategoryByType(type);
     const categoryIndex = this.data.categoryOptions.indexOf(defaultCategory);
 
-    this.setData({
+    this.setData(Object.assign({
       type,
-      ...buildCategorySelectionData(this.data.categoryOptions, categoryIndex),
-    });
+    }, buildCategorySelectionData(this.data.categoryOptions, categoryIndex)));
   },
 
   onAmountInput(e) {
@@ -817,9 +802,7 @@ Page({
   },
 
   onCategoryChange(e) {
-    this.setData({
-      ...buildCategorySelectionData(this.data.categoryOptions, Number(e.detail.value)),
-    });
+    this.setData(buildCategorySelectionData(this.data.categoryOptions, Number(e.detail.value)));
   },
 
   onDateChange(e) {
@@ -836,13 +819,12 @@ Page({
 
   onFillExample() {
     const categoryIndex = this.data.categoryOptions.indexOf(getDefaultCategoryByType("expense"));
-    this.setData({
+    this.setData(Object.assign({
       type: "expense",
-      ...buildCategorySelectionData(this.data.categoryOptions, categoryIndex),
       amount: "28",
       date: today(),
       note: "午饭",
-    });
+    }, buildCategorySelectionData(this.data.categoryOptions, categoryIndex)));
 
     wx.showToast({
       title: "已填充",
@@ -1536,7 +1518,7 @@ Page({
     }));
 
     wx.navigateTo({
-      url: `/pages/bill-edit/index?mode=draft&draftIndex=${draftIndex}&draft=${draftPayload}`,
+      url: `/package-bill/bill-edit/index?mode=draft&draftIndex=${draftIndex}&draft=${draftPayload}`,
       events: {
         draftSaved: (detail) => {
           this.onDraftSaved(detail);

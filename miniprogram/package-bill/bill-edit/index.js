@@ -73,16 +73,15 @@ function buildEditableFormState(categoryOptions, payload) {
     ? payload.category
     : getDefaultCategoryByType(type);
 
-  return {
+  return Object.assign({
     type,
     amount: formatAmountInputValue(payload && payload.amount),
-    ...buildCategorySelectionData(
-      categoryOptions,
-      findCategoryIndex(categoryOptions, category)
-    ),
     date: isValidDateString(payload && payload.date) ? payload.date : today(),
     note: typeof (payload && payload.note) === "string" ? payload.note : "",
-  };
+  }, buildCategorySelectionData(
+    categoryOptions,
+    findCategoryIndex(categoryOptions, category)
+  ));
 }
 
 function parseDraftIndex(value) {
@@ -169,16 +168,15 @@ Page({
       return;
     }
 
-    this.setData({
+    this.setData(Object.assign({
       mode: EDIT_MODE.DRAFT,
       billId: "",
       draftIndex: parseDraftIndex(options && options.draftIndex),
-      ...buildEditableFormState(this.data.categoryOptions, draft),
       sourceText: "语音草稿",
       createdAtText: "",
       loading: false,
       loadError: "",
-    });
+    }, buildEditableFormState(this.data.categoryOptions, draft)));
   },
 
   async loadBill() {
@@ -200,19 +198,18 @@ Page({
       const res = await db.collection(BILLS_COLLECTION).doc(this.data.billId).get();
       const bill = res && res.data ? res.data : {};
 
-      this.setData({
-        ...buildEditableFormState(this.data.categoryOptions, {
+      this.setData(Object.assign({
+        sourceText: getSourceText(bill.source),
+        createdAtText: formatDateTime(bill.createdAt || bill.created_at || bill._createTime),
+        loading: false,
+        loadError: "",
+      }, buildEditableFormState(this.data.categoryOptions, {
           type: getBillType(bill),
           amount: bill.amount,
           category: getBillCategory(bill),
           date: getBillDate(bill) || today(),
           note: typeof bill.note === "string" ? bill.note : "",
-        }),
-        sourceText: getSourceText(bill.source),
-        createdAtText: formatDateTime(bill.createdAt || bill.created_at || bill._createTime),
-        loading: false,
-        loadError: "",
-      });
+        })));
     } catch (error) {
       console.error("load bill for edit failed:", error);
       this.setData({
@@ -226,13 +223,12 @@ Page({
     const type = e.detail.value;
     const defaultCategory = getDefaultCategoryByType(type);
 
-    this.setData({
+    this.setData(Object.assign({
       type,
-      ...buildCategorySelectionData(
-        this.data.categoryOptions,
-        findCategoryIndex(this.data.categoryOptions, defaultCategory)
-      ),
-    });
+    }, buildCategorySelectionData(
+      this.data.categoryOptions,
+      findCategoryIndex(this.data.categoryOptions, defaultCategory)
+    )));
   },
 
   onAmountInput(e) {
@@ -242,9 +238,7 @@ Page({
   },
 
   onCategoryChange(e) {
-    this.setData({
-      ...buildCategorySelectionData(this.data.categoryOptions, Number(e.detail.value)),
-    });
+    this.setData(buildCategorySelectionData(this.data.categoryOptions, Number(e.detail.value)));
   },
 
   onDateChange(e) {

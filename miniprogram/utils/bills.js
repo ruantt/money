@@ -281,7 +281,7 @@ async function fetchBills(db, options) {
       .get();
 
     const batch = Array.isArray(res.data) ? res.data : [];
-    list.push(...batch);
+    Array.prototype.push.apply(list, batch);
     skip += batch.length;
 
     if (remaining !== null) {

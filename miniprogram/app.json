@@ -2,8 +2,22 @@
   "pages": [
     "pages/home/index",
     "pages/add/index",
-    "pages/bill-edit/index",
     "pages/stats/index"
+  ],
+  "subpackages": [
+    {
+      "root": "package-bill",
+      "pages": [
+        "bill-edit/index"
+      ]
+    },
+    {
+      "root": "package-demo",
+      "pages": [
+        "index/index",
+        "example/index"
+      ]
+    }
   ],
   "window": {
     "backgroundColor": "#f4f7fb",

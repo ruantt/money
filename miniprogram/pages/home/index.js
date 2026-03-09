@@ -98,21 +98,19 @@ function buildDayGroups(rawBills) {
       group.expenseTotalValue += bill.amount_value;
     }
 
-    group.items.push({
-      ...bill,
+    group.items.push(Object.assign({}, bill, {
       showNote: bill.note_text !== "无",
       metaText: bill.time_text === "时间未知"
         ? bill.source_text
         : `${bill.source_text} · ${bill.time_text}`,
-    });
+    }));
   });
 
   return groups.map((group) => {
-    return {
-      ...group,
+    return Object.assign({}, group, {
       expenseTotalText: formatMoney(group.expenseTotalValue),
       incomeTotalText: formatMoney(group.incomeTotalValue),
-    };
+    });
   });
 }
 
@@ -388,7 +386,7 @@ Page({
     }
 
     wx.navigateTo({
-      url: `/pages/bill-edit/index?id=${billId}`,
+      url: `/package-bill/bill-edit/index?id=${billId}`,
     });
   },
 
